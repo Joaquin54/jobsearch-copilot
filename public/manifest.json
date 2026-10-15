@@ -1,0 +1,21 @@
+{
+  "manifest_version": 3,
+  "name": "Jobsearch Copilot",
+  "description": "Project made to help navigate the doomer job market.",
+  "version": "0.1.0",
+  "action": {
+    "default_popup": "index.html"
+  },
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+  "content_scripts": [
+    {
+      "matches": ["https://*.linkedin.com/*", "https://*.indeed.com/*"],
+      "js": ["content.js"],
+      "run_at": "document_idle"
+    }
+  ],
+  "permissions": ["storage", "activeTab", "scripting"]
+}
