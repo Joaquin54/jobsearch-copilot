@@ -1,7 +1,8 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
-// Popup (HTML + React) and the background service worker ship as ES modules.
+// Popup, the offscreen blob helper (HTML + React) and the background service
+// worker ship as ES modules.
 // Content scripts cannot be modules, so they are built by vite.content.config.ts.
 export default defineConfig({
   base: "./",
@@ -12,6 +13,7 @@ export default defineConfig({
     rollupOptions: {
       input: {
         popup: "index.html",
+        offscreen: "offscreen.html",
         background: "src/background/index.ts",
       },
       output: {
