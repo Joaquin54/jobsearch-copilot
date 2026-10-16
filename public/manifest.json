@@ -12,10 +12,23 @@
   },
   "content_scripts": [
     {
-      "matches": ["https://*.linkedin.com/*", "https://*.indeed.com/*"],
-      "js": ["content.js"],
+      "matches": [
+        "https://*.linkedin.com/*",
+        "https://*.indeed.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
       "run_at": "document_idle"
     }
   ],
-  "permissions": ["storage", "activeTab", "scripting"]
+  "permissions": [
+    "storage",
+    "downloads",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "https://*.linkedin.com/*",
+    "https://*.indeed.com/*"
+  ]
 }
