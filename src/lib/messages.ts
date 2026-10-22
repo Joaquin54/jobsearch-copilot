@@ -7,7 +7,7 @@ import type {
 } from "./types.ts";
 import type { ActivationChoice, ActivationState, Settings } from "./settings.ts";
 import type { QuotaReading } from "./quota.ts";
-import type { UpsertResult } from "./db.ts";
+import type { ScanFilter, UpsertResult } from "./db.ts";
 
 export type ExportFormat = "csv" | "json";
 
@@ -21,6 +21,8 @@ export type Message =
   | { type: "GET_APPLICATION"; payload: { id: string } }
   // popup -> background
   | { type: "QUERY_APPLICATIONS"; payload: { query: ApplicationQuery } }
+  | { type: "COUNT_APPLICATIONS"; payload: { filter: ScanFilter } }
+  | { type: "DAY_COUNTS"; payload: { filter: ScanFilter } }
   | { type: "DELETE_APPLICATION"; payload: { id: string } }
   | { type: "GET_SETTINGS" }
   | { type: "GET_QUOTA" }
@@ -40,6 +42,12 @@ export type ResponseMap = {
   RESOLVE_PENDING: { ok: true; action: "promoted" | "deleted" | "noop" } | Fail;
   GET_APPLICATION: { ok: true; record: JobApplication | null } | Fail;
   QUERY_APPLICATIONS: { ok: true; rows: JobApplication[]; total: number } | Fail;
+  COUNT_APPLICATIONS: { ok: true; count: number } | Fail;
+  /**
+   * Tuples, not a Map: chrome.runtime.sendMessage serializes as JSON, which
+   * would hand the receiver an empty object.
+   */
+  DAY_COUNTS: { ok: true; counts: [string, number][] } | Fail;
   DELETE_APPLICATION: { ok: true } | Fail;
   GET_SETTINGS: { ok: true; settings: Settings } | Fail;
   GET_QUOTA: { ok: true; quota: QuotaReading } | Fail;

@@ -1,4 +1,6 @@
 import {
+  countApplications,
+  dayCounts,
   deleteApplication,
   getApplication,
   listAll,
@@ -121,6 +123,12 @@ async function handle(message: Message): Promise<ResponseMap[Message["type"]]> {
 
     case "QUERY_APPLICATIONS":
       return { ok: true, ...(await queryApplications(message.payload.query)) };
+
+    case "COUNT_APPLICATIONS":
+      return { ok: true, count: await countApplications(message.payload.filter) };
+
+    case "DAY_COUNTS":
+      return { ok: true, counts: [...(await dayCounts(message.payload.filter))] };
 
     case "DELETE_APPLICATION":
       await deleteApplication(message.payload.id);

@@ -39,6 +39,9 @@ export type ApplicationQuery = {
   status?: ApplicationStatus;
   source?: JobSource;
   companyKey?: string;
+  /** Half-open dateApplied window: `from` is included, `to` is not. */
+  from?: IsoDate;
+  to?: IsoDate;
   sort: "dateApplied";
   direction: "asc" | "desc";
   limit: number;

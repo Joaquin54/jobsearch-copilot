@@ -1,0 +1,110 @@
+/* Native Chrome palette. Light values on :root, dark swapped in by media query.
+   Contrast is already AA on these pairs — do not retune them. */
+
+:root {
+  --bg: #ffffff;
+  --card: #f0f4f9;
+  --border: #dde3ea;
+  --sep: #e3e8ee;
+
+  --text: #1f1f1f;
+  --muted: #474747;
+  --disabled: #a8abae;
+
+  --primary: #0b57d0;
+  --primary-container: #d3e3fd;
+  --on-primary-container: #041e49;
+
+  --track: #d3e3fd;
+  --ring: #0b57d0;
+
+  --hover: rgba(31, 31, 31, 0.08);
+  --row-hover: #f6f8fc;
+  --chip-bg: #e9eef6;
+
+  --future: #dde3ea;
+  --tip-bg: #303030;
+  --tip-ink: #f2f2f2;
+
+  --level-0: #dde3ea;
+  --level-1: #c2d7f9;
+  --level-2: #8ab4f8;
+  --level-3: #3f7fe8;
+  --level-4: #0842a0;
+
+  --applied-bg: #c4eed0;
+  --applied-ink: #0f5223;
+  --pending-bg: #ffe7a8;
+  --pending-ink: #5b4300;
+
+  --modality-border: #c4c7c5;
+  --dot-linkedin: #0b57d0;
+  --dot-indeed: #6750a4;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg: #1f1f1f;
+    --card: #282a2c;
+    --border: #3c4043;
+    --sep: #333537;
+
+    --text: #e3e3e3;
+    --muted: #c4c7c5;
+    --disabled: #5f6368;
+
+    --primary: #a8c7fa;
+    --primary-container: #0842a0;
+    --on-primary-container: #d3e3fd;
+
+    --track: #37393b;
+    --ring: #a8c7fa;
+
+    --hover: rgba(227, 227, 227, 0.08);
+    --row-hover: #262729;
+    --chip-bg: #333537;
+
+    --future: #3c4043;
+    --tip-bg: #e3e3e3;
+    --tip-ink: #303030;
+
+    --level-0: #37393b;
+    --level-1: #0842a0;
+    --level-2: #1f5dc6;
+    --level-3: #5b95f2;
+    --level-4: #a8c7fa;
+
+    --applied-bg: #0f5223;
+    --applied-ink: #c4eed0;
+    --pending-bg: #5b4300;
+    --pending-ink: #ffe7a8;
+
+    --modality-border: #5f6368;
+    --dot-linkedin: #a8c7fa;
+    --dot-indeed: #d0bcff;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html {
+  color-scheme: light dark;
+}
+
+body {
+  margin: 0;
+  background: var(--bg);
+  color: var(--text);
+  font-family: "Roboto", system-ui, sans-serif;
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum" 1;
+  /* The table scrolls inside its own container; the page itself never does. */
+  overflow-x: hidden;
+}
+
+:focus-visible {
+  outline: 2px solid var(--primary);
+  outline-offset: 2px;
+}
