@@ -4,31 +4,76 @@ import { watchApplyClicks, watchSuccessModal } from "./applyEvents.ts";
 import { extract } from "./extract.ts";
 import { watchJobId, type JobChange } from "./navigation.ts";
 import { resolveAdapter, type SiteAdapter } from "./sites/index.ts";
-import { consolePort } from "./ui/consolePort.ts";
+import { cardPort } from "./ui/cardPort.ts";
 import type { UiPort } from "./ui/port.ts";
 
-const ui: UiPort = consolePort;
+const ui: UiPort = cardPort;
 
-type Watch = { pendingId: string | null; pendingCompany: string };
+type Watch = {
+  pendingId: string | null;
+  /** The board's own job id for the pending row, for the applied-pane signal. */
+  pendingJobId: string | null;
+  pendingCompany: string;
+};
 
 let watching = false;
 
-async function recordApply(adapter: SiteAdapter, state: Watch): Promise<void> {
+async function recordApply(adapter: SiteAdapter, state: Watch): Promise<string | null> {
   const jobId = adapter.jobId(new URL(location.href), document);
-  if (jobId === null) return;
+  if (jobId === null) return null;
 
   const outcome = extract(adapter, jobId, location.href);
   if (!outcome.ok) {
     ui.toast(`Not tracked (${outcome.reason})`, 4000);
-    return;
+    return null;
   }
 
   const response = await send({ type: "APPLY_DETECTED", payload: { draft: outcome.draft } });
-  if (!response.ok) return;
+  if (!response.ok) return null;
 
   state.pendingId = response.id;
+  state.pendingJobId = outcome.draft.nativeBoardId;
   state.pendingCompany = outcome.draft.company;
+  await rememberPending(state);
   ui.toast(`Tracked ${outcome.draft.title} at ${outcome.draft.company}`, 6000);
+  return response.id;
+}
+
+/**
+ * One promotion body for both signals: the site's confirmation modal and the
+ * user answering its "did you finish applying?" question. A confirmation for a
+ * job with no pending row of its own still counts — LinkedIn only asks it after
+ * a real apply — so the record is captured first and promoted straight away.
+ */
+async function promoteNow(adapter: SiteAdapter, state: Watch): Promise<void> {
+  const jobId = adapter.jobId(new URL(location.href), document);
+  const matches = state.pendingId !== null && state.pendingJobId === jobId;
+  const id = matches ? state.pendingId : await recordApply(adapter, state);
+  if (id === null) return;
+
+  state.pendingId = null;
+  state.pendingJobId = null;
+  await rememberPending(state);
+  await send({ type: "PROMOTE_APPLIED", payload: { id } });
+  ui.toast("Application confirmed.", 4000);
+}
+
+/** Mirrors the in-memory pending row into the tab's session storage. */
+async function rememberPending(state: Watch): Promise<void> {
+  const pending =
+    state.pendingId === null || state.pendingJobId === null
+      ? null
+      : { id: state.pendingId, jobId: state.pendingJobId, company: state.pendingCompany };
+  await send({ type: "SET_PENDING", payload: { pending } });
+}
+
+/** A reload loses the in-memory row, so the question is re-armed from storage. */
+async function restorePending(state: Watch): Promise<void> {
+  const response = await send({ type: "GET_PENDING" });
+  if (!response.ok || response.pending === null) return;
+  state.pendingId = response.pending.id;
+  state.pendingJobId = response.pending.jobId;
+  state.pendingCompany = response.pending.company;
 }
 
 async function confirmPending(state: Watch): Promise<void> {
@@ -37,10 +82,10 @@ async function confirmPending(state: Watch): Promise<void> {
 
   const answer = await ui.prompt({
     key: "confirm-pending",
-    text: `Was the application for ${state.pendingCompany} submitted?`,
+    text: `Did you submit your application to ${state.pendingCompany}?`,
     actions: [
-      { label: "Yes", value: "yes" },
-      { label: "No", value: "no" },
+      { label: "Yes, submitted", value: "yes" },
+      { label: "No, discard it", value: "no" },
     ],
   });
   // An unanswered or superseded question keeps the row pending so the next
@@ -48,6 +93,9 @@ async function confirmPending(state: Watch): Promise<void> {
   if (answer === "") return;
 
   state.pendingId = null;
+  state.pendingJobId = null;
+  await rememberPending(state);
+  // "no" deletes the row in the background; only an explicit answer ever does.
   await send({ type: "RESOLVE_PENDING", payload: { id, submitted: answer === "yes" } });
 }
 
@@ -72,6 +120,8 @@ async function offerExport(state: Watch): Promise<void> {
   }
   await send({ type: "WIPE_STORE" });
   state.pendingId = null;
+  state.pendingJobId = null;
+  await rememberPending(state);
   ui.toast("Stored applications cleared.", 4000);
 }
 
@@ -79,27 +129,44 @@ function startWatching(adapter: SiteAdapter, jobId: string): void {
   if (watching) return;
   watching = true;
 
-  const state: Watch = { pendingId: null, pendingCompany: "" };
+  const state: Watch = { pendingId: null, pendingJobId: null, pendingCompany: "" };
+  let currentJobId: string | null = jobId;
+  void restorePending(state);
 
-  watchApplyClicks(adapter, (): void => {
-    void recordApply(adapter, state);
+  watchApplyClicks(adapter, (): string | null => currentJobId, {
+    onApply: (): void => {
+      void recordApply(adapter, state);
+    },
+    onAnswer: (answer: "yes" | "no"): void => {
+      if (answer === "no") {
+        console.log("[jobsearch-copilot] apply not finished; the row stays pending");
+        return;
+      }
+      void promoteNow(adapter, state);
+    },
   });
 
-  watchSuccessModal(adapter, (): void => {
-    const id = state.pendingId;
-    if (id === null) return;
-    state.pendingId = null;
-    void send({ type: "PROMOTE_APPLIED", payload: { id } });
-    ui.toast("Application confirmed.", 4000);
-  });
+  watchSuccessModal(
+    adapter,
+    (): void => {
+      if (state.pendingId === null) return;
+      void promoteNow(adapter, state);
+    },
+    (): string | null => state.pendingJobId,
+  );
 
-  watchJobId(adapter, jobId, (_change: JobChange): void => {
+  watchJobId(adapter, jobId, (change: JobChange): void => {
+    currentJobId = change.jobId;
     void confirmPending(state);
   });
 
   chrome.runtime.onMessage.addListener((message: Message): undefined => {
     if (message.type === "QUOTA_WARNING") void offerExport(state);
-    if (message.type === "STORE_WIPED") state.pendingId = null;
+    if (message.type === "STORE_WIPED") {
+      state.pendingId = null;
+      state.pendingJobId = null;
+      void rememberPending(state);
+    }
     return undefined;
   });
 
@@ -131,17 +198,26 @@ function waitForJobId(adapter: SiteAdapter): Promise<string> {
 
 async function main(): Promise<void> {
   const adapter = resolveAdapter(new URL(location.href));
-  if (!adapter) return;
+  if (!adapter) {
+    console.log(`[jobsearch-copilot] no adapter for ${location.hostname}`);
+    return;
+  }
 
   // Activation is asked for only once a real job page is open, never on a feed.
   const jobId = await waitForJobId(adapter);
 
   const state = await getActivationState(adapter.domain);
-  if (state === "suppressed") return;
+  if (state === "suppressed") {
+    console.log(`[jobsearch-copilot] suppressed on ${adapter.domain}`);
+    return;
+  }
 
   if (state === "ask") {
     const activated = await askToActivate(adapter.domain, ui);
-    if (!activated) return;
+    if (!activated) {
+      console.log(`[jobsearch-copilot] activation declined on ${adapter.domain}`);
+      return;
+    }
   }
 
   startWatching(adapter, jobId);
