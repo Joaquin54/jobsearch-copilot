@@ -8,16 +8,54 @@ export type JobChange = {
 };
 
 const POLL_MS = 400;
-const SETTLE_QUIET_MS = 250;
-const SETTLE_CAP_MS = 3000;
+export const SETTLE_QUIET_MS = 250;
+export const SETTLE_CAP_MS = 3000;
+export const SETTLE_POLL_MS = 100;
 
 /**
  * LinkedIn and Indeed flip the URL before swapping the detail pane, so a
  * capture taken on the URL change alone records the previous job's fields under
- * the new id. Waiting for the pane to go quiet is what prevents that; if it
- * never settles we skip the capture rather than store a guess.
+ * the new id. If the site names the job the pane is showing, that is the signal
+ * to wait on; otherwise waiting for the pane to go quiet is the best available.
+ * Either way, never settling means skipping the capture rather than storing a guess.
  */
-function waitForSettle(adapter: SiteAdapter): Promise<boolean> {
+export function waitForSettle(
+  adapter: SiteAdapter,
+  jobId: string,
+  capMs: number = SETTLE_CAP_MS,
+): Promise<boolean> {
+  const probe = (): boolean | null => {
+    try {
+      return adapter.jobSettled?.(document, jobId) ?? null;
+    } catch {
+      return null;
+    }
+  };
+
+  const first = probe();
+  if (first === true) return Promise.resolve(true);
+  if (first !== null) return pollJobSettled(probe, capMs);
+  return waitForQuiet(adapter, capMs);
+}
+
+function pollJobSettled(probe: () => boolean | null, capMs: number): Promise<boolean> {
+  return new Promise<boolean>((resolve: (settled: boolean) => void): void => {
+    const started = Date.now();
+    const timer = setInterval((): void => {
+      if (probe() === true) {
+        clearInterval(timer);
+        resolve(true);
+        return;
+      }
+      if (Date.now() - started >= capMs) {
+        clearInterval(timer);
+        resolve(false);
+      }
+    }, SETTLE_POLL_MS) as unknown as number;
+  });
+}
+
+function waitForQuiet(adapter: SiteAdapter, capMs: number): Promise<boolean> {
   const root = adapter.detailRoot(document);
   if (!root) return Promise.resolve(false);
 
@@ -32,7 +70,7 @@ function waitForSettle(adapter: SiteAdapter): Promise<boolean> {
       observer.disconnect();
       clearTimeout(quietTimer);
       resolve(false);
-    }, SETTLE_CAP_MS);
+    }, capMs);
 
     function finish(): void {
       observer.disconnect();
@@ -67,7 +105,7 @@ export function watchJobId(
 
     const previousJobId = currentJobId;
     currentJobId = jobId;
-    void waitForSettle(adapter).then((settled: boolean): void => {
+    void waitForSettle(adapter, jobId).then((settled: boolean): void => {
       onChange({ previousJobId, jobId, settled });
     });
   };

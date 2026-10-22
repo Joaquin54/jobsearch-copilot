@@ -18,6 +18,11 @@ export type FieldName =
   | "datePosted"
   | "description";
 
+export type FieldContext = { jobId: string; doc: Document };
+
+/** Returns "" when its structural anchor is missing, never a guess. */
+export type FieldReader = (root: HTMLElement, ctx: FieldContext) => string;
+
 export type SiteAdapter = {
   readonly source: JobSource;
   readonly domain: SupportedDomain;
@@ -30,4 +35,13 @@ export type SiteAdapter = {
   /** Post-apply confirmation, where the site has an observable one. */
   successModal(doc: Document): HTMLElement | null;
   readonly fields: Readonly<Record<FieldName, readonly Selector[]>>;
+  /** Tried before `fields`, for markup no selector list can express. */
+  readonly readers?: Readonly<Partial<Record<FieldName, FieldReader>>>;
+  descriptionRoot?(root: HTMLElement, ctx: FieldContext): Element | null;
+  /** Second promotion signal: the page itself says the application is in. */
+  isApplied?(doc: Document, jobId: string): boolean;
+  /** null = no such signal on this page; the caller falls back to mutation quiet. */
+  jobSettled?(doc: Document, jobId: string): boolean | null;
+  /** The site's own post-apply question, answered by the user in the page. */
+  applyAnswer?(element: Element): "yes" | "no" | null;
 };

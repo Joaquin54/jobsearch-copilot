@@ -2,13 +2,16 @@
 import type { JobDraft } from "../lib/types.ts";
 import { parseJob } from "../parser/index.ts";
 import { sectionize } from "./boundaries.ts";
-import type { FieldName, Selector, SiteAdapter } from "./sites/index.ts";
+import type { FieldContext, FieldName, Selector, SiteAdapter } from "./sites/index.ts";
 
 export const DEBUG = false;
 
 export type ExtractOutcome =
   | { ok: true; draft: JobDraft; via: Partial<Record<FieldName, number>> }
-  | { ok: false; reason: "no-root" | "promoted" | "missing-required" };
+  | { ok: false; reason: "no-root" | "stale" | "promoted" | "missing-required" };
+
+/** A reader hit, as opposed to an index into the adapter's selector list. */
+const VIA_READER = -1;
 
 function clean(text: string): string {
   return text.replace(/\s+/g, " ").trim();
@@ -56,15 +59,36 @@ function safe<T>(fn: () => T, fallback: T): T {
   }
 }
 
+function refuse(reason: "no-root" | "stale" | "promoted" | "missing-required", detail: string): ExtractOutcome {
+  console.warn(`[jobsearch-copilot] extract refused (${reason}): ${detail}`);
+  return { ok: false, reason };
+}
+
 export function extract(adapter: SiteAdapter, jobId: string, url: string): ExtractOutcome {
   const root = safe((): HTMLElement | null => adapter.detailRoot(document), null);
-  if (!root) return { ok: false, reason: "no-root" };
+  if (!root) return refuse("no-root", `no detail root on ${adapter.domain}`);
+
+  // The pane can still hold the previous job while the URL already names the
+  // new one; storing that would file the old fields under the new id.
+  const settled = safe((): boolean | null => adapter.jobSettled?.(document, jobId) ?? null, null);
+  if (settled === false) return refuse("stale", `pane has not settled on job ${jobId}`);
 
   // An ad must never be parsed, so a thrown check counts as promoted.
-  if (safe((): boolean => adapter.isPromoted(root), true)) return { ok: false, reason: "promoted" };
+  if (safe((): boolean => adapter.isPromoted(root), true)) {
+    return refuse("promoted", `job ${jobId} reads as promoted`);
+  }
 
+  const ctx: FieldContext = { jobId, doc: document };
   const via: Partial<Record<FieldName, number>> = {};
   const read = (field: FieldName): string => {
+    const reader = adapter.readers?.[field];
+    if (reader) {
+      const text = clean(safe((): string => reader(root, ctx), ""));
+      if (text !== "") {
+        via[field] = VIA_READER;
+        return text;
+      }
+    }
     const hit = pickText(root, adapter.fields[field]);
     if (hit.index >= 0) via[field] = hit.index;
     return hit.text;
@@ -72,7 +96,12 @@ export function extract(adapter: SiteAdapter, jobId: string, url: string): Extra
 
   const title = read("title");
   const company = read("company");
-  if (title === "" || company === "") return { ok: false, reason: "missing-required" };
+  if (title === "" || company === "") {
+    const missing = [title === "" ? "title" : "", company === "" ? "company" : ""]
+      .filter((name: string): boolean => name !== "")
+      .join(" and ");
+    return refuse("missing-required", `${missing} empty for job ${jobId}`);
+  }
 
   const location = read("location");
   const payRaw = read("pay");
@@ -80,12 +109,14 @@ export function extract(adapter: SiteAdapter, jobId: string, url: string): Extra
   const datePosted = read("datePosted");
 
   const descriptionRoot =
+    safe((): Element | null => adapter.descriptionRoot?.(root, ctx) ?? null, null) ??
     safe((): Element | null => {
       const hit = adapter.fields.description.find((c: Selector): boolean =>
         Boolean(root.querySelector(c.css)),
       );
       return hit ? root.querySelector(hit.css) : null;
-    }, null) ?? root;
+    }, null) ??
+    root;
 
   const sections = safe(() => sectionize(descriptionRoot), {
     description: "",
