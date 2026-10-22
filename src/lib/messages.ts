@@ -8,6 +8,7 @@ import type {
 import type { ActivationChoice, ActivationState, Settings } from "./settings.ts";
 import type { QuotaReading } from "./quota.ts";
 import type { ScanFilter, UpsertResult } from "./db.ts";
+import type { PendingApplication } from "./pending.ts";
 
 export type ExportFormat = "csv" | "json";
 
@@ -19,6 +20,8 @@ export type Message =
   | { type: "PROMOTE_APPLIED"; payload: { id: string } }
   | { type: "RESOLVE_PENDING"; payload: { id: string; submitted: boolean } }
   | { type: "GET_APPLICATION"; payload: { id: string } }
+  | { type: "SET_PENDING"; payload: { pending: PendingApplication | null } }
+  | { type: "GET_PENDING" }
   // popup -> background
   | { type: "QUERY_APPLICATIONS"; payload: { query: ApplicationQuery } }
   | { type: "COUNT_APPLICATIONS"; payload: { filter: ScanFilter } }
@@ -41,6 +44,8 @@ export type ResponseMap = {
   PROMOTE_APPLIED: { ok: true; promoted: boolean } | Fail;
   RESOLVE_PENDING: { ok: true; action: "promoted" | "deleted" | "noop" } | Fail;
   GET_APPLICATION: { ok: true; record: JobApplication | null } | Fail;
+  SET_PENDING: { ok: true } | Fail;
+  GET_PENDING: { ok: true; pending: PendingApplication | null } | Fail;
   QUERY_APPLICATIONS: { ok: true; rows: JobApplication[]; total: number } | Fail;
   COUNT_APPLICATIONS: { ok: true; count: number } | Fail;
   /**

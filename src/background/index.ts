@@ -18,6 +18,7 @@ import {
   type Message,
   type ResponseMap,
 } from "../lib/messages.ts";
+import { getPending, setPending } from "../lib/pending.ts";
 import { isOverThreshold, readQuota } from "../lib/quota.ts";
 import {
   readSettings,
@@ -32,6 +33,11 @@ const WATCHED_URLS = ["https://*.linkedin.com/*", "https://*.indeed.com/*"];
 
 chrome.runtime.onInstalled.addListener((): void => {
   console.log("[jobsearch-copilot] installed");
+});
+
+/** A closed tab can never answer its question; drop what it was waiting on. */
+chrome.tabs.onRemoved.addListener((tabId: number): void => {
+  void setPending(tabId, null);
 });
 
 /** Runs after every write: warns once per fill cycle, then stays quiet. */
@@ -91,7 +97,10 @@ async function runExport(format: ExportFormat): Promise<ResponseMap["EXPORT"]> {
   }
 }
 
-async function handle(message: Message): Promise<ResponseMap[Message["type"]]> {
+async function handle(
+  message: Message,
+  sender: chrome.runtime.MessageSender,
+): Promise<ResponseMap[Message["type"]]> {
   switch (message.type) {
     case "GET_ACTIVATION":
       return { ok: true, state: await resolveActivation(message.payload.domain) };
@@ -120,6 +129,20 @@ async function handle(message: Message): Promise<ResponseMap[Message["type"]]> {
 
     case "GET_APPLICATION":
       return { ok: true, record: await getApplication(message.payload.id) };
+
+    /* Per tab, so two job tabs never answer for each other's application. */
+    case "SET_PENDING": {
+      const tabId = sender.tab?.id;
+      if (tabId === undefined) return { ok: false, reason: "no tab" };
+      await setPending(tabId, message.payload.pending);
+      return { ok: true };
+    }
+
+    case "GET_PENDING": {
+      const tabId = sender.tab?.id;
+      if (tabId === undefined) return { ok: false, reason: "no tab" };
+      return { ok: true, pending: await getPending(tabId) };
+    }
 
     case "QUERY_APPLICATIONS":
       return { ok: true, ...(await queryApplications(message.payload.query)) };
@@ -163,10 +186,10 @@ async function handle(message: Message): Promise<ResponseMap[Message["type"]]> {
 chrome.runtime.onMessage.addListener(
   (
     message: Message,
-    _sender: chrome.runtime.MessageSender,
+    sender: chrome.runtime.MessageSender,
     sendResponse: (response: unknown) => void,
   ): boolean => {
-    handle(message)
+    handle(message, sender)
       .then(sendResponse)
       .catch((error: unknown): void => sendResponse({ ok: false, reason: String(error) }));
     return true;
