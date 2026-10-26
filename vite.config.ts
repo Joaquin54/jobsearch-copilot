@@ -1,12 +1,15 @@
 import react from "@vitejs/plugin-react";
 import { defineConfig } from "vite";
 
+import { buildId } from "./vite.buildId.ts";
+
 // Popup, the offscreen blob helper (HTML + React) and the background service
 // worker ship as ES modules.
 // Content scripts cannot be modules, so they are built by vite.content.config.ts.
 export default defineConfig({
   base: "./",
   plugins: [react()],
+  define: { __BUILD_ID__: JSON.stringify(buildId()) },
   build: {
     outDir: "dist",
     emptyOutDir: true,

@@ -27,6 +27,7 @@ import {
   setQuotaWarned,
   wasQuotaWarned,
 } from "../lib/settings.ts";
+import { maybeReloadForNewBuild } from "./devReload.ts";
 import { createBlobUrl, revokeBlobUrl } from "./offscreenClient.ts";
 
 const WATCHED_URLS = [
@@ -38,6 +39,9 @@ const WATCHED_URLS = [
 chrome.runtime.onInstalled.addListener((): void => {
   console.log("[jobsearch-copilot] installed");
 });
+
+// Every worker start is also a chance to notice the files on disk moved on.
+void maybeReloadForNewBuild();
 
 /** A closed tab can never answer its question; drop what it was waiting on. */
 chrome.tabs.onRemoved.addListener((tabId: number): void => {
@@ -106,8 +110,14 @@ async function handle(
   sender: chrome.runtime.MessageSender,
 ): Promise<ResponseMap[Message["type"]]> {
   switch (message.type) {
-    case "GET_ACTIVATION":
-      return { ok: true, state: await resolveActivation(message.payload.domain) };
+    case "GET_ACTIVATION": {
+      const state = await resolveActivation(message.payload.domain);
+      // Deliberately not awaited: every content script sends this on every page
+      // load, which makes it the cheapest staleness check there is, and the
+      // reload must not pre-empt this response.
+      void maybeReloadForNewBuild();
+      return { ok: true, state };
+    }
 
     case "SET_ACTIVATION":
       await setActivation(message.payload.domain, message.payload.choice);
