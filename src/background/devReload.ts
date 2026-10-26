@@ -37,14 +37,21 @@ export async function maybeReloadForNewBuild(): Promise<boolean> {
     return false;
   }
 
-  if (onDisk === null || onDisk === BUILD_ID) return false;
+  if (onDisk === null) return false;
+  if (onDisk === BUILD_ID) {
+    // Converged: forget the attempt so the key does not outlive the problem.
+    await chrome.storage.local.remove(ATTEMPT_KEY);
+    return false;
+  }
 
   // One attempt per id on disk. If reloading does not change what this worker
   // reports, the ids disagree for some other reason and a loop would be worse
-  // than a stale script.
-  const stored = await chrome.storage.session.get(ATTEMPT_KEY);
+  // than a stale script. Startup-only still loops (reload, new worker, check,
+  // reload) when the ids never converge, e.g. a half-finished build, so the
+  // guard sits in local storage, which is documented to outlast a reload.
+  const stored = await chrome.storage.local.get(ATTEMPT_KEY);
   if (stored[ATTEMPT_KEY] === onDisk) return false;
-  await chrome.storage.session.set({ [ATTEMPT_KEY]: onDisk });
+  await chrome.storage.local.set({ [ATTEMPT_KEY]: onDisk });
 
   console.log(`[jobsearch-copilot] reloading for build ${onDisk} (worker has ${BUILD_ID})`);
   chrome.runtime.reload();
