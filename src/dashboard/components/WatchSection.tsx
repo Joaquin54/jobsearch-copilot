@@ -1,4 +1,4 @@
-import { memo, useCallback, useEffect, useState } from "react";
+import { memo, useCallback, useEffect, useRef, useState } from "react";
 import type { ReactElement } from "react";
 
 import { BUILD_ID } from "../../lib/build.ts";
@@ -22,6 +22,8 @@ export const WatchSection = memo(function WatchSection(): ReactElement {
   const [rows, setRows] = useState<readonly WatchRow[]>([]);
   const [busy, setBusy] = useState<SupportedDomain | null>(null);
 
+  const mounted = useRef<boolean>(true);
+
   const load = useCallback((alive: () => boolean): void => {
     void readWatchRows().then((next: WatchRow[]): void => {
       if (alive()) setRows(next);
@@ -29,20 +31,34 @@ export const WatchSection = memo(function WatchSection(): ReactElement {
   }, []);
 
   useEffect((): (() => void) => {
-    let alive = true;
-    load((): boolean => alive);
+    mounted.current = true;
+    load((): boolean => mounted.current);
     return (): void => {
-      alive = false;
+      mounted.current = false;
     };
   }, [load]);
+
+  const markUnavailable = (current: readonly WatchRow[]): readonly WatchRow[] =>
+    current.map((row: WatchRow): WatchRow => ({ ...row, state: "unavailable" }));
 
   const handleReset = useCallback(
     (domain: SupportedDomain): void => {
       setBusy(domain);
-      void resetWatch(domain).then((): void => {
-        setBusy(null);
-        load((): boolean => true);
-      });
+      const alive = (): boolean => mounted.current;
+      void resetWatch(domain)
+        .then((cleared: boolean): void => {
+          if (!alive()) return;
+          setBusy(null);
+          // A reset that did not land (worker mid-restart) must not re-render
+          // the stale row as if nothing happened: show it as unread instead.
+          if (cleared) load(alive);
+          else setRows(markUnavailable);
+        })
+        .catch((): void => {
+          if (!alive()) return;
+          setBusy(null);
+          setRows(markUnavailable);
+        });
     },
     [load],
   );
