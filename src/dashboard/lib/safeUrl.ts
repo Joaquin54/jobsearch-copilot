@@ -1,6 +1,6 @@
 /**
  * Job URLs come from scraped pages, so a row's link is only rendered when the
- * URL is https and its host is one of the two job boards. The host is compared
+ * URL is https and its host is one of the three job boards. The host is compared
  * against the full label boundary: a plain substring test would accept
  * evil-linkedin.com and linkedin.com.evil.net.
  */
