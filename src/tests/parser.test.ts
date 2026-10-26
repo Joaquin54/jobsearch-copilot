@@ -14,6 +14,9 @@ const PAY_CASES: readonly (readonly [string, number | null, number | null, strin
   ["From $25.00 per hour", 25, null, "USD", "hour"],
   ["€4,500 per month", 4500, 4500, "EUR", "month"],
   ["$1,200 a week", 1200, 1200, "USD", "week"],
+  ["$128–148K/yr", 128000, 148000, "USD", "year"],
+  ["$53K/yr", 53000, 53000, "USD", "year"],
+  ["$37.01/hr", 37.01, 37.01, "USD", "hour"],
 ];
 
 test("pay strings parse into amounts, currency and period", (): void => {
@@ -44,6 +47,23 @@ test("trailing hours and 401(k) do not become the range minimum", (): void => {
   const withBenefits = parsePay("$120,000 a year, 401(k) matching");
   expect(withBenefits?.min).toBe(120000);
   expect(withBenefits?.max).toBe(120000);
+});
+
+test("a trailing K on a range's upper bound applies to the lower bound too", (): void => {
+  const handshake = parsePay("$128–148K/yr");
+  expect(handshake?.min).toBe(128000);
+  expect(handshake?.max).toBe(148000);
+  expect(formatPay(handshake as never)).toBe("$128,000–$148,000 / year");
+
+  // A lower bound that already states its magnitude must not be scaled again.
+  const comma = parsePay("$95,000 - $120K a year");
+  expect(comma?.min).toBe(95000);
+  expect(comma?.max).toBe(120000);
+
+  // No K anywhere: an hourly range stays an hourly range.
+  const hourly = parsePay("$20 – $25/hr");
+  expect(hourly?.min).toBe(20);
+  expect(hourly?.max).toBe(25);
 });
 
 test("currency codes are word-bounded", (): void => {

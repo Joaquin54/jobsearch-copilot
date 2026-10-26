@@ -88,12 +88,21 @@ function toAmount(digits: string, suffix: string | undefined): number {
 const ANCHORED_AMOUNT =
   /(?:(?:ca|us|au)?\$|£|€|₹|\b(?:usd|cad|aud|gbp|eur|inr)\s*)\s*(\d[\d,]*(?:\.\d+)?)\s*(k\b)?|(\d[\d,]*(?:\.\d+)?)\s*(k)\b/gi;
 
+/**
+ * "$128–148K/yr": the K on the upper bound governs both ends, so the lower one
+ * is given its own before the amounts are read. Only a bare 1–3 digit lower
+ * bound qualifies — "$95,000 - $120K" states its own magnitude and must stay
+ * 95,000 rather than becoming 95,000K.
+ */
+const RANGE_SHARED_K =
+  /(?<![\d.,])(\d{1,3}(?:\.\d+)?)(\s*(?:[-–—]|\s+to\s+)\s*(?:(?:ca|us|au)?\$|£|€|₹)?\s*\d[\d,]*(?:\.\d+)?\s*k\b)/gi;
+
 export function parsePay(raw: string): Pay | null {
   const text = raw.trim();
   if (text === "") return null;
 
   const amounts: number[] = [];
-  for (const match of text.matchAll(ANCHORED_AMOUNT)) {
+  for (const match of text.replace(RANGE_SHARED_K, "$1K$2").matchAll(ANCHORED_AMOUNT)) {
     const digits = match[1] ?? match[3];
     if (digits === undefined) continue;
     amounts.push(toAmount(digits, match[2] ?? match[4]));
