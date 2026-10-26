@@ -113,10 +113,6 @@ async function handle(
   switch (message.type) {
     case "GET_ACTIVATION": {
       const state = await resolveActivation(message.payload.domain);
-      // Deliberately not awaited: every content script sends this on every page
-      // load, which makes it the cheapest staleness check there is, and the
-      // reload must not pre-empt this response.
-      void maybeReloadForNewBuild();
       return { ok: true, state };
     }
 

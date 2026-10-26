@@ -17,6 +17,13 @@ const ATTEMPT_KEY = "reloadAttempt";
  * Dev only: a packed install has an update_url and is left alone. This is the
  * extension reading one of its own files — no network, no injection, no
  * web_accessible_resources.
+ *
+ * Called at worker start only. Checking on every page load was tried and is
+ * wrong: reloading mid-session orphans the content scripts already running in
+ * other tabs, so their next apply click gets no answer and is dropped with
+ * nothing shown, and the per-tab pending rows and "not now" answers held in
+ * session storage go with it. A tab on an older build is fixed by its own next
+ * load instead.
  */
 export async function maybeReloadForNewBuild(): Promise<boolean> {
   if (chrome.runtime.getManifest().update_url !== undefined) return false;
