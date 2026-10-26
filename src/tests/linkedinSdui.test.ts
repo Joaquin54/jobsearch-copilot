@@ -1,7 +1,8 @@
 import { beforeEach, expect, test } from "bun:test";
 
 import { extract } from "../content/extract.ts";
-import { linkedinAdapter, relativeToIso } from "../content/sites/linkedin.ts";
+import { relativeToIso } from "../content/relativeDate.ts";
+import { linkedinAdapter } from "../content/sites/linkedin.ts";
 
 const SEARCH_URL = "https://www.linkedin.com/jobs/search-results/?currentJobId=4012345678";
 const VIEW_URL = "https://www.linkedin.com/jobs/view/4098765432/";

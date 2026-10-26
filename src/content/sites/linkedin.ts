@@ -1,3 +1,4 @@
+import { relativeToIso } from "../relativeDate.ts";
 import type { FieldContext, SiteAdapter } from "./types.ts";
 
 const JOB_PATH = /\/jobs\/view\/(\d+)/;
@@ -190,32 +191,6 @@ function chipsOf(card: readonly Element[]): readonly string[] {
     .filter(isChipLink)
     .map(textOf)
     .filter((t: string): boolean => t !== "");
-}
-
-const MINUTE = 60_000;
-const UNIT_MS: Readonly<Record<string, number>> = {
-  minute: MINUTE,
-  hour: 60 * MINUTE,
-  day: 24 * 60 * MINUTE,
-  week: 7 * 24 * 60 * MINUTE,
-  month: 30 * 24 * 60 * MINUTE,
-  year: 365 * 24 * 60 * MINUTE,
-};
-const RELATIVE = /(\d+)\s+(minute|hour|day|week|month|year)s?\s+ago/i;
-
-/**
- * "9 hours ago" → an ISO stamp. Approximate by design: the pane never carries a
- * real date, and "Reposted 2 weeks ago" dates the repost, not the original post.
- */
-export function relativeToIso(text: string, now: Date): string {
-  if (/just now|moments ago/i.test(text)) return now.toISOString();
-  if (/\byesterday\b/i.test(text)) return new Date(now.getTime() - UNIT_MS.day!).toISOString();
-  const match = RELATIVE.exec(text);
-  const unit = match?.[2]?.toLowerCase();
-  if (!match?.[1] || unit === undefined) return "";
-  const span = UNIT_MS[unit];
-  if (span === undefined) return "";
-  return new Date(now.getTime() - Number(match[1]) * span).toISOString();
 }
 
 function detailRoot(doc: Document): HTMLElement | null {
