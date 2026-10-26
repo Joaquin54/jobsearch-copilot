@@ -1,6 +1,7 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
 
 import { watchApplyClicks, type RejectReason } from "../content/applyEvents.ts";
+import { confirmPending } from "../content/index.ts";
 import { waitForSettle } from "../content/navigation.ts";
 import { handshakeAdapter } from "../content/sites/handshake.ts";
 import { indeedAdapter } from "../content/sites/indeed.ts";
@@ -293,4 +294,41 @@ test("handshake follows the h1 anchor when it switches mid-wait", async (): Prom
   const anchor = document.querySelector('a[href="/jobs/11730261"]') as Element;
   setTimeout((): void => anchor.setAttribute("href", "/jobs/11739999"), 20);
   expect(await waitForSettle(handshakeAdapter, "11739999", 400)).toBe(true);
+});
+
+test("an answer to a superseded card still resolves the row it was asked about", async (): Promise<void> => {
+  const sent: { type: string; payload?: unknown }[] = [];
+  (globalThis as { chrome?: unknown }).chrome ??= {};
+  (globalThis as { chrome: { runtime?: unknown } }).chrome.runtime = {
+    sendMessage: async (message: { type: string; payload?: unknown }): Promise<unknown> => {
+      sent.push(message);
+      return { ok: true };
+    },
+  };
+
+  // Apply to A, navigate to B: the card asks about A.
+  const state = { pendingId: "A", pendingJobId: "job-a", pendingCompany: "Northwind Labs" };
+  const answered = confirmPending(state);
+
+  // The user clicks Apply on B before answering, so B's row replaces A's.
+  state.pendingId = "P2";
+  state.pendingJobId = "job-b";
+  state.pendingCompany = "Contoso";
+
+  const host = [...document.documentElement.children].find(
+    (node: Element): boolean => node.shadowRoot !== null,
+  );
+  const yes = [...(host?.shadowRoot?.querySelectorAll("button") ?? [])].find(
+    (node: Element): boolean => node.textContent === "Yes, submitted",
+  );
+  (yes as HTMLElement).click();
+  await answered;
+
+  const resolved = sent.filter((m: { type: string }): boolean => m.type === "RESOLVE_PENDING");
+  expect(resolved).toEqual([
+    { type: "RESOLVE_PENDING", payload: { id: "A", submitted: true } },
+  ]);
+  // Clearing would persist null over B's row in session storage.
+  expect(sent.filter((m: { type: string }): boolean => m.type === "SET_PENDING")).toEqual([]);
+  expect(state.pendingId).toBe("P2");
 });

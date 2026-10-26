@@ -77,7 +77,7 @@ async function restorePending(state: Watch): Promise<void> {
   state.pendingCompany = response.pending.company;
 }
 
-async function confirmPending(state: Watch): Promise<void> {
+export async function confirmPending(state: Watch): Promise<void> {
   const id = state.pendingId;
   if (id === null) return;
 
@@ -93,13 +93,14 @@ async function confirmPending(state: Watch): Promise<void> {
   // navigation can ask again, rather than orphaning it.
   if (answer === "") return;
   // The card stays open until it is answered, so the row asked about may have
-  // been promoted or replaced in the meantime; an answer only ever resolves the
-  // row it was asked about.
-  if (state.pendingId !== id) return;
-
-  state.pendingId = null;
-  state.pendingJobId = null;
-  await rememberPending(state);
+  // been replaced in the meantime (apply to B while still asked about A). The
+  // answer is still about A, so it is sent either way; only clearing is guarded,
+  // because rememberPending persists `state` and would wipe B's row from storage.
+  if (state.pendingId === id) {
+    state.pendingId = null;
+    state.pendingJobId = null;
+    await rememberPending(state);
+  }
   // "no" deletes the row in the background; only an explicit answer ever does.
   await send({ type: "RESOLVE_PENDING", payload: { id, submitted: answer === "yes" } });
 }
