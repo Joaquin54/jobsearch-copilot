@@ -17,6 +17,13 @@ const ATTEMPT_KEY = "reloadAttempt";
  * Dev only: a packed install has an update_url and is left alone. This is the
  * extension reading one of its own files — no network, no injection, no
  * web_accessible_resources.
+ *
+ * Called at worker start only. Checking on every page load was tried and is
+ * wrong: reloading mid-session orphans the content scripts already running in
+ * other tabs, so their next apply click gets no answer and is dropped with
+ * nothing shown, and the per-tab pending rows and "not now" answers held in
+ * session storage go with it. A tab on an older build is fixed by its own next
+ * load instead.
  */
 export async function maybeReloadForNewBuild(): Promise<boolean> {
   if (chrome.runtime.getManifest().update_url !== undefined) return false;
@@ -30,14 +37,21 @@ export async function maybeReloadForNewBuild(): Promise<boolean> {
     return false;
   }
 
-  if (onDisk === null || onDisk === BUILD_ID) return false;
+  if (onDisk === null) return false;
+  if (onDisk === BUILD_ID) {
+    // Converged: forget the attempt so the key does not outlive the problem.
+    await chrome.storage.local.remove(ATTEMPT_KEY);
+    return false;
+  }
 
   // One attempt per id on disk. If reloading does not change what this worker
   // reports, the ids disagree for some other reason and a loop would be worse
-  // than a stale script.
-  const stored = await chrome.storage.session.get(ATTEMPT_KEY);
+  // than a stale script. Startup-only still loops (reload, new worker, check,
+  // reload) when the ids never converge, e.g. a half-finished build, so the
+  // guard sits in local storage, which is documented to outlast a reload.
+  const stored = await chrome.storage.local.get(ATTEMPT_KEY);
   if (stored[ATTEMPT_KEY] === onDisk) return false;
-  await chrome.storage.session.set({ [ATTEMPT_KEY]: onDisk });
+  await chrome.storage.local.set({ [ATTEMPT_KEY]: onDisk });
 
   console.log(`[jobsearch-copilot] reloading for build ${onDisk} (worker has ${BUILD_ID})`);
   chrome.runtime.reload();

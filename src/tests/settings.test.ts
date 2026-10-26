@@ -9,6 +9,7 @@ import {
   resolveActivation,
   setActivation,
   setQuotaWarned,
+  suppressedThisSession,
   wasQuotaWarned,
 } from "../lib/settings.ts";
 import { isOverThreshold, WARN_RATIO } from "../lib/quota.ts";
@@ -86,4 +87,15 @@ test("threshold trips at exactly 80 percent", (): void => {
   expect(isOverThreshold({ usage: 79, quota: 100, ratio: 0.79 })).toBe(false);
   expect(isOverThreshold({ usage: 80, quota: 100, ratio: 0.8 })).toBe(true);
   expect(isOverThreshold({ usage: 0, quota: 0, ratio: 0 })).toBe(false);
+});
+
+test("suppressedThisSession lists only not-now domains, not other session keys", async (): Promise<void> => {
+  await setActivation("indeed.com", "not-now");
+  await setQuotaWarned(true);
+  await setActivation("linkedin.com", "never");
+
+  expect(await suppressedThisSession()).toEqual(["indeed.com"]);
+
+  await clearActivation("indeed.com");
+  expect(await suppressedThisSession()).toEqual([]);
 });

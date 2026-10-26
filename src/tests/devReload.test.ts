@@ -15,8 +15,8 @@ let reloads = 0;
 let fetched: string[] = [];
 
 /** Serves one build.json, as Chrome does for an unpacked extension's own file. */
-function install(onDisk: unknown, updateUrl?: string): void {
-  installChromeDouble();
+function install(onDisk: unknown, updateUrl?: string): ReturnType<typeof installChromeDouble> {
+  const areas: ReturnType<typeof installChromeDouble> = installChromeDouble();
   reloads = 0;
   fetched = [];
 
@@ -35,6 +35,7 @@ function install(onDisk: unknown, updateUrl?: string): void {
     if (onDisk === undefined) return Promise.reject(new Error("not found"));
     return Promise.resolve({ json: (): Promise<unknown> => Promise.resolve(onDisk) } as Response);
   }) as typeof fetch;
+  return areas;
 }
 
 beforeEach((): void => {
@@ -58,6 +59,8 @@ test("a different id on disk reloads the extension, once", async (): Promise<voi
   expect(reloads).toBe(1);
 });
 
+// This passes because the id on disk differs, not because of the per-id guard:
+// install() empties both storage areas, so the guard is not even consulted.
 test("a newer id after the first attempt is still acted on", async (): Promise<void> => {
   install({ id: "2026-10-25T18:00:00.000Z" });
   await maybeReloadForNewBuild();
@@ -90,4 +93,20 @@ test("a missing or malformed stamp is not a reason to reload", async (): Promise
   install({ id: "" });
   expect(await maybeReloadForNewBuild()).toBe(false);
   expect(reloads).toBe(0);
+});
+
+test("the attempt guard is kept in the area that survives a reload", async (): Promise<void> => {
+  const { local, session } = install({ id: "2026-10-25T18:00:00.000Z" });
+  await maybeReloadForNewBuild();
+
+  expect(local["reloadAttempt"]).toBe("2026-10-25T18:00:00.000Z");
+  expect(session["reloadAttempt"]).toBeUndefined();
+});
+
+test("the attempt guard is cleared once the ids agree", async (): Promise<void> => {
+  const { local } = install({ id: BUILD_ID });
+  local["reloadAttempt"] = "2026-10-25T18:00:00.000Z";
+
+  expect(await maybeReloadForNewBuild()).toBe(false);
+  expect("reloadAttempt" in local).toBe(false);
 });

@@ -55,7 +55,8 @@ export type ResponseMap = {
    */
   DAY_COUNTS: { ok: true; counts: [string, number][] } | Fail;
   DELETE_APPLICATION: { ok: true } | Fail;
-  GET_SETTINGS: { ok: true; settings: Settings } | Fail;
+  /** `suppressed` is session-scoped "Not now" state, kept out of the stored Settings shape. */
+  GET_SETTINGS: { ok: true; settings: Settings; suppressed: SupportedDomain[] } | Fail;
   RESET_ACTIVATION: { ok: true } | Fail;
   GET_QUOTA: { ok: true; quota: QuotaReading } | Fail;
   EXPORT: { ok: true; downloadId: number; filename: string } | Fail;

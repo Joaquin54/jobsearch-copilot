@@ -4,7 +4,7 @@ import type { SiteAdapter } from "./sites/index.ts";
 const MODAL_DEBOUNCE_MS = 200;
 const LOOKS_LIKE_APPLY = /apply/i;
 
-type RejectReason = "no-detail-root" | "outside-detail-root" | "adapter-rejected";
+export type RejectReason = "no-detail-root" | "outside-detail-root" | "adapter-rejected";
 
 function describe(element: Element): string {
   const label = element.getAttribute("aria-label") ?? "";
@@ -30,9 +30,10 @@ export type ApplyHandlers = {
   /** The site's own "did you finish applying?" question, answered in the page. */
   onAnswer?: (answer: "yes" | "no") => void;
   /**
-   * An apply-looking click that was thrown away. Deduped with the console line,
-   * so it fires at most once per job and reason — the moment the user needs to
-   * hear that nothing was recorded, since they are not watching DevTools.
+   * An apply-looking click that was thrown away, and a miss the user needs to
+   * hear about since they are not watching DevTools. Never fired for a click
+   * outside the pane, which on a results list is every card ("Easy Apply" is
+   * on all of them); a missing pane is told once, a refused control per job.
    */
   onIgnored?: (reason: RejectReason) => void;
 };
@@ -44,6 +45,8 @@ export function watchApplyClicks(
 ): () => void {
   // One line per job and reason: a rejected pane would otherwise log on every click.
   const logged = new Set<string>();
+  // A missing pane is the same fault on every job, so the page hears it once.
+  const told = new Set<RejectReason>();
 
   const reject = (candidate: Element, reason: RejectReason): void => {
     if (!looksLikeApply(candidate)) return;
@@ -51,6 +54,11 @@ export function watchApplyClicks(
     if (logged.has(key)) return;
     logged.add(key);
     console.log(`[jobsearch-copilot] apply click ignored (${reason}): ${describe(candidate)}`);
+    if (reason === "outside-detail-root") return;
+    if (reason === "no-detail-root") {
+      if (told.has(reason)) return;
+      told.add(reason);
+    }
     handlers.onIgnored?.(reason);
   };
 
