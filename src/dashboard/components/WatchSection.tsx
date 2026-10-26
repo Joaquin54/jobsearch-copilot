@@ -3,7 +3,13 @@ import type { ReactElement } from "react";
 
 import { BUILD_ID } from "../../lib/build.ts";
 import type { SupportedDomain } from "../../lib/types.ts";
-import { readWatchRows, resetWatch, WATCH_STATE_LABEL, type WatchRow } from "../lib/watch.ts";
+import {
+  readWatchRows,
+  resetWatch,
+  WATCH_STATE_LABEL,
+  WATCH_STATE_RESETTABLE,
+  type WatchRow,
+} from "../lib/watch.ts";
 
 /**
  * The activation card is asked once per board and the answer is permanent, so
@@ -57,7 +63,7 @@ export const WatchSection = memo(function WatchSection(): ReactElement {
               <button
                 type="button"
                 className="pill-button"
-                disabled={row.state === "unasked" || busy === row.domain}
+                disabled={!WATCH_STATE_RESETTABLE[row.state] || busy === row.domain}
                 onClick={(): void => handleReset(row.domain)}
               >
                 Reset

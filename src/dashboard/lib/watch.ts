@@ -2,7 +2,12 @@ import { send } from "../../lib/messages.ts";
 import type { ActivationChoice } from "../../lib/settings.ts";
 import type { SupportedDomain } from "../../lib/types.ts";
 
-export type WatchState = "watching" | "off" | "unasked";
+/**
+ * "unavailable" is a failed read, never a user decision: the service worker
+ * restarting. It is reported as itself because rendering it as "unasked" would
+ * show a board the user set to Never as never asked.
+ */
+export type WatchState = "watching" | "off" | "unasked" | "not-now" | "unavailable";
 
 export type WatchRow = {
   domain: SupportedDomain;
@@ -21,27 +26,49 @@ export const WATCH_STATE_LABEL: Record<WatchState, string> = {
   watching: "Watching",
   off: "Never ask",
   unasked: "Not asked yet",
+  "not-now": "Not now (this session)",
+  unavailable: "Unavailable",
 };
 
 /**
- * "not-now" is deliberately absent: it lives in chrome.storage.session under
- * TRUSTED_CONTEXTS and resolves back to "ask" on its own, so a row reading
- * "Not asked yet" is the truth for the next browsing session either way.
+ * Whether Reset has anything to clear. "unavailable" is false on purpose: a
+ * button offered on a state we admit we could not read misrepresents what it does.
  */
-function stateOf(choice: ActivationChoice | undefined): WatchState {
+export const WATCH_STATE_RESETTABLE: Record<WatchState, boolean> = {
+  watching: true,
+  off: true,
+  unasked: false,
+  "not-now": true,
+  unavailable: false,
+};
+
+/**
+ * Stored answers are checked first, matching resolveActivation: a "Never" must
+ * not be downgraded to a soft pause because the same board was also dismissed
+ * earlier this session.
+ */
+function stateOf(choice: ActivationChoice | undefined, suppressed: boolean): WatchState {
   if (choice === "yes") return "watching";
   if (choice === "never") return "off";
-  return "unasked";
+  return suppressed ? "not-now" : "unasked";
 }
 
 export async function readWatchRows(): Promise<WatchRow[]> {
   const response = await send({ type: "GET_SETTINGS" });
-  const activation = response.ok ? response.settings.activation : {};
+  if (!response.ok) {
+    console.log(`[jobsearch-copilot] watch state unavailable (${response.reason})`);
+    return BOARDS.map(
+      (board): WatchRow => ({ domain: board.domain, label: board.label, state: "unavailable" }),
+    );
+  }
   return BOARDS.map(
     (board): WatchRow => ({
       domain: board.domain,
       label: board.label,
-      state: stateOf(activation[board.domain]),
+      state: stateOf(
+        response.settings.activation[board.domain],
+        response.suppressed.includes(board.domain),
+      ),
     }),
   );
 }

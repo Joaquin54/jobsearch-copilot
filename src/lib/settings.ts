@@ -85,6 +85,18 @@ export async function isSuppressedThisSession(domain: SupportedDomain): Promise<
   return stored[key] === true;
 }
 
+/**
+ * Every domain answered "Not now" this session. Reads the whole session store
+ * and keeps the SESSION_PREFIX keys: the `as SupportedDomain` cast is safe only
+ * because suppressForSession is the sole writer of that prefix.
+ */
+export async function suppressedThisSession(): Promise<SupportedDomain[]> {
+  const stored = await chrome.storage.session.get();
+  return Object.keys(stored)
+    .filter((key: string): boolean => key.startsWith(SESSION_PREFIX) && stored[key] === true)
+    .map((key: string): SupportedDomain => key.slice(SESSION_PREFIX.length) as SupportedDomain);
+}
+
 export async function resolveActivation(domain: SupportedDomain): Promise<ActivationState> {
   const settings = await readSettings();
   const choice = settings.activation[domain];

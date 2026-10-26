@@ -1,6 +1,6 @@
 import { afterEach, expect, test } from "bun:test";
 
-import { readWatchRows, resetWatch, type WatchRow } from "./watch.ts";
+import { readWatchRows, resetWatch, WATCH_STATE_RESETTABLE, type WatchRow } from "./watch.ts";
 
 type Sent = { type: string; payload?: { domain: string } };
 
@@ -33,6 +33,7 @@ test("every stored choice maps to its row state, and an unset board to unasked",
     GET_SETTINGS: {
       ok: true,
       settings: { activation: { "indeed.com": "yes", "linkedin.com": "never" } },
+      suppressed: [],
     },
   });
 
@@ -50,13 +51,42 @@ test("every stored choice maps to its row state, and an unset board to unasked",
   });
 });
 
-test("a failed read still lists every board, as unasked", async (): Promise<void> => {
+test("a failed read is reported as itself, never as a decision the user made", async (): Promise<void> => {
   installWorker({ GET_SETTINGS: { ok: false, reason: "no response" } });
 
   const rows = await readWatchRows();
 
   expect(rows).toHaveLength(3);
-  expect(new Set(rows.map((row: WatchRow): string => row.state))).toEqual(new Set(["unasked"]));
+  expect(new Set(rows.map((row: WatchRow): string => row.state))).toEqual(new Set(["unavailable"]));
+  expect(WATCH_STATE_RESETTABLE["unavailable"]).toBe(false);
+});
+
+test("a board answered Not now is reported as such, and can be reset", async (): Promise<void> => {
+  installWorker({
+    GET_SETTINGS: { ok: true, settings: { activation: {} }, suppressed: ["indeed.com"] },
+  });
+
+  expect(states(await readWatchRows())).toEqual({
+    "linkedin.com": "unasked",
+    "indeed.com": "not-now",
+    "joinhandshake.com": "unasked",
+  });
+  expect(WATCH_STATE_RESETTABLE["not-now"]).toBe(true);
+});
+
+test("a stored answer outranks the session suppression", async (): Promise<void> => {
+  installWorker({
+    GET_SETTINGS: {
+      ok: true,
+      settings: { activation: { "indeed.com": "never", "linkedin.com": "yes" } },
+      suppressed: ["indeed.com", "linkedin.com"],
+    },
+  });
+
+  const byDomain = states(await readWatchRows());
+
+  expect(byDomain["indeed.com"]).toBe("off");
+  expect(byDomain["linkedin.com"]).toBe("watching");
 });
 
 test("a reset names the board it clears and reports whether it landed", async (): Promise<void> => {

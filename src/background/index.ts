@@ -26,6 +26,7 @@ import {
   resolveActivation,
   setActivation,
   setQuotaWarned,
+  suppressedThisSession,
   wasQuotaWarned,
 } from "../lib/settings.ts";
 import { maybeReloadForNewBuild } from "./devReload.ts";
@@ -169,7 +170,11 @@ async function handle(
       return { ok: true };
 
     case "GET_SETTINGS":
-      return { ok: true, settings: await readSettings() };
+      return {
+        ok: true,
+        settings: await readSettings(),
+        suppressed: await suppressedThisSession(),
+      };
 
     case "RESET_ACTIVATION":
       await clearActivation(message.payload.domain);
