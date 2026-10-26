@@ -1,6 +1,6 @@
 import { afterEach, beforeEach, expect, test } from "bun:test";
 
-import { watchApplyClicks } from "../content/applyEvents.ts";
+import { watchApplyClicks, type RejectReason } from "../content/applyEvents.ts";
 import { waitForSettle } from "../content/navigation.ts";
 import { handshakeAdapter } from "../content/sites/handshake.ts";
 import { indeedAdapter } from "../content/sites/indeed.ts";
@@ -34,12 +34,16 @@ afterEach((): void => {
 test("a click on Easy Apply is recorded once, a result card is not", async (): Promise<void> => {
   await render("linkedin-sdui-search");
   let applies = 0;
+  const told: RejectReason[] = [];
   const stop = watchApplyClicks(linkedinAdapter, (): string | null => "4012345678", {
     onApply: (): void => {
       applies += 1;
     },
     onAnswer: (answer: "yes" | "no"): void => {
       answers.push(answer);
+    },
+    onIgnored: (reason: RejectReason): void => {
+      told.push(reason);
     },
   });
 
@@ -54,6 +58,9 @@ test("a click on Easy Apply is recorded once, a result card is not", async (): P
   const ignored = lines.filter((line: string): boolean => line.includes("apply click ignored"));
   expect(ignored).toHaveLength(1);
   expect(ignored[0]).toContain("outside-detail-root");
+  // Every card on a results list reads "Easy Apply", so clicking through the
+  // list must never put a "Not tracked" card on the page.
+  expect(told).toEqual([]);
 
   // Save is inside the pane but is not an apply control, and it is not
   // apply-looking either, so it stays silent.
@@ -62,32 +69,38 @@ test("a click on Easy Apply is recorded once, a result card is not", async (): P
   stop();
 });
 
-test("an apply-looking click with no detail pane says so once", (): void => {
+test("no detail pane is logged per job but told on the page once", (): void => {
   document.body.innerHTML = '<button aria-label="Easy Apply to this job">Easy Apply</button>';
   let applies = 0;
-  const reasons: string[] = [];
-  const stop = watchApplyClicks(linkedinAdapter, (): string | null => null, {
+  let jobId: string | null = null;
+  const told: RejectReason[] = [];
+  const stop = watchApplyClicks(linkedinAdapter, (): string | null => jobId, {
     onApply: (): void => {
       applies += 1;
     },
     onAnswer: (answer: "yes" | "no"): void => {
       answers.push(answer);
     },
-    onIgnored: (reason: string): void => {
-      reasons.push(reason);
+    onIgnored: (reason: RejectReason): void => {
+      told.push(reason);
     },
   });
 
   const button = document.querySelector("button") as Element;
   click(button);
   click(button);
+  jobId = "4012345678";
+  click(button);
 
   expect(applies).toBe(0);
+  // The console trail is per job, so a second job is still visible in DevTools.
   const ignored = lines.filter((line: string): boolean => line.includes("apply click ignored"));
-  expect(ignored).toHaveLength(1);
+  expect(ignored).toHaveLength(2);
   expect(ignored[0]).toContain("no-detail-root");
-  // Told on the page too, and deduped with the console line.
-  expect(reasons).toEqual(["no-detail-root"]);
+  expect(ignored[1]).toContain("no-detail-root");
+  // A dead detailRoot selector is the same fault on every job, so the page is
+  // told once rather than once per card clicked.
+  expect(told).toEqual(["no-detail-root"]);
   stop();
 });
 
@@ -114,12 +127,16 @@ test("a recorded apply is never reported as ignored", async (): Promise<void> =>
 test("the external apply control is recorded on layout B", async (): Promise<void> => {
   await render("linkedin-sdui-view");
   let applies = 0;
+  const told: RejectReason[] = [];
   const stop = watchApplyClicks(linkedinAdapter, (): string | null => "4098765432", {
     onApply: (): void => {
       applies += 1;
     },
     onAnswer: (answer: "yes" | "no"): void => {
       answers.push(answer);
+    },
+    onIgnored: (reason: RejectReason): void => {
+      told.push(reason);
     },
   });
 
@@ -131,6 +148,9 @@ test("the external apply control is recorded on layout B", async (): Promise<voi
   click(document.querySelector('[role="toolbar"] button') as Element);
   expect(applies).toBe(1);
   expect(lines.filter((line: string): boolean => line.includes("adapter-rejected"))).toHaveLength(1);
+  // A control inside the pane that the adapter refused is a real miss, so it
+  // still reaches the page.
+  expect(told).toEqual(["adapter-rejected"]);
   stop();
 });
 
@@ -214,12 +234,16 @@ test("indeed keeps the mutation-quiet path when the page has no result cards", a
 test("a click on Handshake's Quick apply is recorded once, a result card is not", async (): Promise<void> => {
   await render("handshake-search");
   let applies = 0;
+  const told: RejectReason[] = [];
   const stop = watchApplyClicks(handshakeAdapter, (): string | null => "11730261", {
     onApply: (): void => {
       applies += 1;
     },
     onAnswer: (answer: "yes" | "no"): void => {
       answers.push(answer);
+    },
+    onIgnored: (reason: RejectReason): void => {
+      told.push(reason);
     },
   });
 
@@ -234,6 +258,7 @@ test("a click on Handshake's Quick apply is recorded once, a result card is not"
   // Save and the More-actions menu are inside the pane and still not applies.
   click(document.querySelector('[aria-label="More actions for this job"]') as Element);
   expect(applies).toBe(1);
+  expect(told).toEqual([]);
   stop();
 });
 
