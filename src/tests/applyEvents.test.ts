@@ -175,9 +175,9 @@ test("waitForSettle follows the About marker when there is one", async (): Promi
   expect(await waitForSettle(linkedinAdapter, "4099999999", 400)).toBe(true);
 });
 
-test("indeed keeps the mutation-quiet path", async (): Promise<void> => {
+test("indeed keeps the mutation-quiet path when the page has no result cards", async (): Promise<void> => {
   document.body.innerHTML = '<div class="jobsearch-ViewJobLayout-jobDisplay"><h1>Role</h1></div>';
-  expect(indeedAdapter.jobSettled).toBeUndefined();
+  expect(indeedAdapter.jobSettled?.(document, "abc")).toBeNull();
   expect(await waitForSettle(indeedAdapter, "abc", 400)).toBe(true);
 
   document.body.innerHTML = "<main>no pane</main>";

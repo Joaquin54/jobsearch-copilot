@@ -68,11 +68,20 @@ test("linkedin job id comes from the query, the path, then the dom", (): void =>
   expect(linkedinAdapter.jobId(new URL("https://www.linkedin.com/feed/"), document)).toBe("999");
 });
 
-test("indeed job id comes from jk, vjk, then the dom", (): void => {
-  render('<div data-jk="dom-jk"></div>', "https://ca.indeed.com/jobs");
+test("indeed job id comes from jk, the pressed card, then vjk", (): void => {
+  render(
+    '<a data-jk="pressed-jk" aria-pressed="true"></a><a data-jk="other-jk"></a>',
+    "https://ca.indeed.com/jobs",
+  );
   expect(indeedAdapter.jobId(new URL("https://ca.indeed.com/viewjob?jk=abc"), document)).toBe("abc");
+  expect(indeedAdapter.jobId(new URL("https://ca.indeed.com/jobs?vjk=def"), document)).toBe(
+    "pressed-jk",
+  );
+
+  // No pressed card: the url, and never the first card on the page.
+  render('<a data-jk="first-jk"></a>', "https://ca.indeed.com/jobs");
   expect(indeedAdapter.jobId(new URL("https://ca.indeed.com/jobs?vjk=def"), document)).toBe("def");
-  expect(indeedAdapter.jobId(new URL("https://ca.indeed.com/jobs"), document)).toBe("dom-jk");
+  expect(indeedAdapter.jobId(new URL("https://ca.indeed.com/jobs"), document)).toBeNull();
 });
 
 test("a linkedin pane extracts a complete draft", (): void => {
@@ -166,8 +175,16 @@ test("apply buttons are matched per site", (): void => {
   expect(linkedinAdapter.isApplyButton(document.querySelector("button"))).toBe(true);
   expect(linkedinAdapter.isApplyButton(null)).toBe(false);
 
-  render('<button id="indeedApplyButton">Apply now</button>', "https://ca.indeed.com/viewjob?jk=y");
+  // The legacy control still counts, but only inside the legacy pane: every
+  // apply check is scoped to the open job's detail root.
+  render(
+    '<div class="jobsearch-ViewJobLayout-jobDisplay"><button id="indeedApplyButton">Apply now</button></div>',
+    "https://ca.indeed.com/viewjob?jk=y",
+  );
   expect(indeedAdapter.isApplyButton(document.querySelector("button"))).toBe(true);
+
+  render('<button id="indeedApplyButton">Apply now</button>', "https://ca.indeed.com/viewjob?jk=y");
+  expect(indeedAdapter.isApplyButton(document.querySelector("button"))).toBe(false);
 });
 
 test("linkedin success modal is detected, indeed has none", (): void => {
