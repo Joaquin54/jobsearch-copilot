@@ -43,7 +43,13 @@ const PAY_ROW = /\$\s?\d/;
 const KIND_ROW = /^(?:job|internship)$/i;
 const SCHEDULE_ROW = /^(full-time|part-time)\b/i;
 const MODALITY_ROW = /^(onsite|remote|hybrid or onsite|hybrid)\b/i;
-const PLACE = /([A-Z][A-Za-z.'\- ]*,\s*[A-Z]{2})\b/;
+/**
+ * "Seattle, WA", "Austin, Texas" or "London, United Kingdom". The city class
+ * holds a space so "Salt Lake City" matches, which is also why the tail is
+ * bounded: a state code or a run of capitalised words ends at the comma that
+ * opens the next place, so "Seattle, WA, Madison, WI" yields only Seattle.
+ */
+const PLACE = /([A-Z][A-Za-z.'\- ]*,\s*(?:[A-Z]{2,3}\b|[A-Z][a-z]+(?:\s[A-Z][a-z]+)*))/;
 const SEPARATOR = /[∙·•]/;
 
 function clean(text: string): string {

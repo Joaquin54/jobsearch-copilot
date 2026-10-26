@@ -296,6 +296,43 @@ test("the banner layout still extracts, hybrid and all", async (): Promise<void>
   expect(outcome.draft.pay).toBe("$53,000 / year");
 });
 
+/* The fixtures only ever listed US places, so the glance row is rewritten here:
+   the place pattern has to keep the first place of any shape, and stop where
+   the next capitalised place begins. */
+async function locationFor(row: string): Promise<string> {
+  await render("handshake-banner");
+  const span = [...document.querySelectorAll("span")].find((node: Element): boolean =>
+    (node.textContent ?? "").startsWith("Hybrid, based in"),
+  ) as Element;
+  span.textContent = row;
+  const outcome = extract(handshakeAdapter, "11730263", BANNER_URL);
+  expect(outcome.ok).toBe(true);
+  return outcome.ok ? outcome.draft.location : "";
+}
+
+test("a non-US place is kept instead of collapsing to the modality", async (): Promise<void> => {
+  expect(await locationFor("Onsite, based in London, United Kingdom")).toBe(
+    "London, United Kingdom (Onsite)",
+  );
+  expect(await locationFor("Hybrid, based in Toronto, Ontario")).toBe("Toronto, Ontario (Hybrid)");
+});
+
+test("a state spelled out in full is kept, and only the first place of several", async (): Promise<void> => {
+  expect(await locationFor("Onsite, based in Austin, Texas")).toBe("Austin, Texas (Onsite)");
+  const several = await locationFor(
+    "Onsite, based in London, United Kingdom, Paris, France, Madison, WI",
+  );
+  expect(several).toBe("London, United Kingdom (Onsite)");
+  expect(several).not.toContain("Paris");
+  expect(several).not.toContain("Madison");
+});
+
+test("the combined hybrid or onsite modality is read whole", async (): Promise<void> => {
+  expect(await locationFor("Hybrid or onsite, based in Denver, CO")).toBe(
+    "Denver, CO (Hybrid or onsite)",
+  );
+});
+
 test("the description keeps the preview and drops the More control", async (): Promise<void> => {
   await render("handshake-search");
   const root = handshakeAdapter.detailRoot(document) as HTMLElement;
