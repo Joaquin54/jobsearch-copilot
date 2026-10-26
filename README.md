@@ -13,7 +13,8 @@ everything on your machine — no backend, no accounts, no cost to run.
   shows its "Application sent" confirmation, or when you confirm after moving to another job.
 - A job is identified by its board id (`linkedin:4012345678`, `indeed:abc123`). Applying again to
   the same posting updates the application date and leaves the rest of the record alone.
-- Promoted and sponsored listings are never parsed or stored.
+- Promoted and sponsored listings are tracked like any other: a record only ever appears
+  because you clicked Apply on that posting.
 - Storage lives in IndexedDB inside the extension. At 80% of the browser's quota you are offered a
   CSV/JSON export, after which the store is cleared.
 

@@ -8,7 +8,7 @@ export const DEBUG = false;
 
 export type ExtractOutcome =
   | { ok: true; draft: JobDraft; via: Partial<Record<FieldName, number>> }
-  | { ok: false; reason: "no-root" | "stale" | "promoted" | "missing-required" };
+  | { ok: false; reason: "no-root" | "stale" | "missing-required" };
 
 /** A reader hit, as opposed to an index into the adapter's selector list. */
 const VIA_READER = -1;
@@ -59,7 +59,7 @@ function safe<T>(fn: () => T, fallback: T): T {
   }
 }
 
-function refuse(reason: "no-root" | "stale" | "promoted" | "missing-required", detail: string): ExtractOutcome {
+function refuse(reason: "no-root" | "stale" | "missing-required", detail: string): ExtractOutcome {
   console.warn(`[jobsearch-copilot] extract refused (${reason}): ${detail}`);
   return { ok: false, reason };
 }
@@ -73,10 +73,8 @@ export function extract(adapter: SiteAdapter, jobId: string, url: string): Extra
   const settled = safe((): boolean | null => adapter.jobSettled?.(document, jobId) ?? null, null);
   if (settled === false) return refuse("stale", `pane has not settled on job ${jobId}`);
 
-  // An ad must never be parsed, so a thrown check counts as promoted.
-  if (safe((): boolean => adapter.isPromoted(root), true)) {
-    return refuse("promoted", `job ${jobId} reads as promoted`);
-  }
+  // Sponsored and promoted listings are parsed like any other: a record only
+  // ever exists because the user clicked Apply on this very posting.
 
   const ctx: FieldContext = { jobId, doc: document };
   const via: Partial<Record<FieldName, number>> = {};

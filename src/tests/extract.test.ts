@@ -105,7 +105,10 @@ test("an indeed pane extracts pay and contract type", (): void => {
   expect(outcome.draft.skills).toEqual(expect.arrayContaining(["Python", "Airflow"]));
 });
 
-test("a promoted listing is refused before parsing", (): void => {
+/* A record only ever exists because the user clicked Apply on that very
+   posting, so a promoted or sponsored listing is tracked like any other. */
+
+test("a promoted listing is parsed like any other", (): void => {
   render(
     LINKEDIN_PANE.replace(
       '<h1 class="job-details-jobs-unified-top-card__job-title">',
@@ -114,18 +117,20 @@ test("a promoted listing is refused before parsing", (): void => {
     "https://www.linkedin.com/jobs/view/1/",
   );
   const outcome = extract(linkedinAdapter, "1", "https://www.linkedin.com/jobs/view/1/");
-  expect(outcome).toEqual({ ok: false, reason: "promoted" });
+  expect(outcome.ok).toBe(true);
+  if (!outcome.ok) return;
+  expect(outcome.draft.title).toBe("Senior Platform Engineer");
 });
 
-test("a sponsored indeed listing is refused", (): void => {
+test("a sponsored indeed listing is parsed like any other", (): void => {
   render(
     INDEED_PANE.replace("<h1", '<div data-testid="sponsoredJob">Sponsored</div><h1'),
     "https://ca.indeed.com/viewjob?jk=x",
   );
-  expect(extract(indeedAdapter, "x", "https://ca.indeed.com/viewjob?jk=x")).toEqual({
-    ok: false,
-    reason: "promoted",
-  });
+  const outcome = extract(indeedAdapter, "x", "https://ca.indeed.com/viewjob?jk=x");
+  expect(outcome.ok).toBe(true);
+  if (!outcome.ok) return;
+  expect(outcome.draft.company).toBe("Globex");
 });
 
 test("a missing title reports missing-required instead of throwing", (): void => {
