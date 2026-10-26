@@ -681,6 +681,36 @@ td .cell-sub:first-child {
   text-align: right;
 }
 
+/* ---------- watched boards ---------- */
+
+.watch-card {
+  display: flex;
+  flex-direction: column;
+  padding: 8px 24px 16px;
+}
+
+.watch-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.watch-name {
+  font-size: 15px;
+}
+
+.watch-state {
+  margin-left: auto;
+  font-size: 13px;
+}
+
+.watch-note {
+  margin: 16px 0 0;
+  font-size: 13px;
+}
+
 /* ---------- responsive ---------- */
 
 @media (max-width: 1024px) {

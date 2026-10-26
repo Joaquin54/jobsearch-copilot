@@ -21,6 +21,7 @@ import {
 import { getPending, setPending } from "../lib/pending.ts";
 import { isOverThreshold, readQuota } from "../lib/quota.ts";
 import {
+  clearActivation,
   readSettings,
   resolveActivation,
   setActivation,
@@ -173,6 +174,10 @@ async function handle(
 
     case "GET_SETTINGS":
       return { ok: true, settings: await readSettings() };
+
+    case "RESET_ACTIVATION":
+      await clearActivation(message.payload.domain);
+      return { ok: true };
 
     case "GET_QUOTA":
       return { ok: true, quota: await readQuota() };

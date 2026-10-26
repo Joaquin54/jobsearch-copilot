@@ -4,6 +4,7 @@ import type { ReactElement } from "react";
 import { ExportButton } from "./components/ExportButton.tsx";
 import { OverviewSection } from "./components/OverviewSection.tsx";
 import { TableSection } from "./components/TableSection.tsx";
+import { WatchSection } from "./components/WatchSection.tsx";
 import { PaperPlaneIcon } from "./components/icons.tsx";
 import { useCatalog } from "./hooks/useCatalog.ts";
 import { formatUpdatedAt } from "./time/formats.ts";
@@ -43,6 +44,7 @@ export default function Dashboard(): ReactElement {
           requestCompanies={requestCompanies}
           collectIdsRef={collectIdsRef}
         />
+        <WatchSection />
       </main>
     </div>
   );

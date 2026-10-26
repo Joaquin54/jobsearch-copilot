@@ -43,6 +43,18 @@ export async function setActivation(
 }
 
 /**
+ * Puts the domain back to "ask". Both stores are cleared: a "not-now" from this
+ * session would otherwise outlive the reset and keep the card hidden.
+ */
+export async function clearActivation(domain: SupportedDomain): Promise<void> {
+  const settings = await readSettings();
+  const activation = { ...settings.activation };
+  delete activation[domain];
+  await writeSettings({ ...settings, activation });
+  await chrome.storage.session.remove(`${SESSION_PREFIX}${domain}`);
+}
+
+/**
  * Session-scoped on purpose: dismissing the warning silences it for this
  * browsing session only, so ignoring it once cannot mute the warning forever.
  */

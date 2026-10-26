@@ -28,6 +28,7 @@ export type Message =
   | { type: "DAY_COUNTS"; payload: { filter: ScanFilter } }
   | { type: "DELETE_APPLICATION"; payload: { id: string } }
   | { type: "GET_SETTINGS" }
+  | { type: "RESET_ACTIVATION"; payload: { domain: SupportedDomain } }
   | { type: "GET_QUOTA" }
   | { type: "EXPORT"; payload: { format: ExportFormat } }
   | { type: "WIPE_STORE" }
@@ -55,6 +56,7 @@ export type ResponseMap = {
   DAY_COUNTS: { ok: true; counts: [string, number][] } | Fail;
   DELETE_APPLICATION: { ok: true } | Fail;
   GET_SETTINGS: { ok: true; settings: Settings } | Fail;
+  RESET_ACTIVATION: { ok: true } | Fail;
   GET_QUOTA: { ok: true; quota: QuotaReading } | Fail;
   EXPORT: { ok: true; downloadId: number; filename: string } | Fail;
   WIPE_STORE: { ok: true; deleted: number } | Fail;
