@@ -60,10 +60,12 @@ function textOf(element: Element): string {
   return clean(element.textContent ?? "");
 }
 
-function headingWithText(root: HTMLElement, text: string): Element | null {
-  return (
-    [...root.querySelectorAll("h3")].find((node: Element): boolean => textOf(node) === text) ?? null
-  );
+function headingsOf(root: HTMLElement): readonly Element[] {
+  return [...root.querySelectorAll("h3")];
+}
+
+function headingWithText(headings: readonly Element[], text: string): Element | null {
+  return headings.find((node: Element): boolean => textOf(node) === text) ?? null;
 }
 
 /**
@@ -92,7 +94,7 @@ function leavesOf(region: readonly Element[]): readonly Element[] {
 }
 
 function headerOf(root: HTMLElement): readonly Element[] {
-  const glance = headingWithText(root, GLANCE_HEADING);
+  const glance = headingWithText(headingsOf(root), GLANCE_HEADING);
   // Everything above "At a glance": the employer logo link precedes the h1, so
   // the region starts at the root rather than at the title. The menu behind
   // "More actions for this job" holds Follow / Flag employer and is not header.
@@ -101,17 +103,23 @@ function headerOf(root: HTMLElement): readonly Element[] {
   );
 }
 
-/** Empty when the heading is missing, so every glance reader returns "". */
+/**
+ * Empty when the heading is missing, so every glance reader returns "". Each
+ * reader walks the pane for itself, once: extract hands a reader only
+ * (root, ctx), so sharing one index across readers would mean widening the
+ * SiteAdapter interface all three adapters use. That was judged not worth it
+ * for a few extra walks per click, so the repeat across readers is deliberate.
+ */
 function glanceOf(root: HTMLElement): readonly Element[] {
-  const glance = headingWithText(root, GLANCE_HEADING);
+  const headings = headingsOf(root);
+  const glance = headingWithText(headings, GLANCE_HEADING);
   if (glance === null) return [];
-  return regionBetween(root, glance, headingWithText(root, DESCRIPTION_HEADING));
+  return regionBetween(root, glance, headingWithText(headings, DESCRIPTION_HEADING));
 }
 
-function glanceRow(root: HTMLElement, pattern: RegExp): string {
-  const row = leavesOf(glanceOf(root)).find((element: Element): boolean =>
-    pattern.test(textOf(element)),
-  );
+/** Takes the leaves, not the root, so a reader reading two rows walks the pane once. */
+function glanceRow(leaves: readonly Element[], pattern: RegExp): string {
+  const row = leaves.find((element: Element): boolean => pattern.test(textOf(element)));
   return row === undefined ? "" : textOf(row);
 }
 
@@ -223,7 +231,7 @@ export const handshakeAdapter: SiteAdapter = {
    * stored, and the control is stripped from a copy rather than from the page.
    */
   descriptionRoot(root: HTMLElement): Element | null {
-    const heading = headingWithText(root, DESCRIPTION_HEADING);
+    const heading = headingWithText(headingsOf(root), DESCRIPTION_HEADING);
     const box = heading?.parentElement?.nextElementSibling ?? null;
     if (box === null) return null;
     const copy = box.cloneNode(true) as Element;
@@ -252,7 +260,7 @@ export const handshakeAdapter: SiteAdapter = {
      * TODO: drop the suffix once parseJob matches modality against jobTypeRaw.
      */
     location(root: HTMLElement): string {
-      const row = glanceRow(root, MODALITY_ROW);
+      const row = glanceRow(leavesOf(glanceOf(root)), MODALITY_ROW);
       if (row === "") return "";
       const modality = MODALITY_ROW.exec(row)?.[1] ?? "";
       const place = PLACE.exec(row.replace(modality, ""))?.[1] ?? "";
@@ -260,13 +268,14 @@ export const handshakeAdapter: SiteAdapter = {
     },
 
     pay(root: HTMLElement): string {
-      return glanceRow(root, PAY_ROW);
+      return glanceRow(leavesOf(glanceOf(root)), PAY_ROW);
     },
 
     /** "Internship · Part-time": the internship's own dates are left out of the field. */
     jobTypeChip(root: HTMLElement): string {
-      const kind = glanceRow(root, KIND_ROW);
-      const schedule = SCHEDULE_ROW.exec(glanceRow(root, SCHEDULE_ROW))?.[1] ?? "";
+      const leaves = leavesOf(glanceOf(root));
+      const kind = glanceRow(leaves, KIND_ROW);
+      const schedule = SCHEDULE_ROW.exec(glanceRow(leaves, SCHEDULE_ROW))?.[1] ?? "";
       return [kind, schedule].filter((part: string): boolean => part !== "").join(" · ");
     },
 
