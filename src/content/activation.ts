@@ -11,9 +11,22 @@ const DOMAIN_LABEL: Record<SupportedDomain, string> = {
   "joinhandshake.com": "Handshake",
 };
 
-export async function getActivationState(domain: SupportedDomain): Promise<ActivationState> {
+/**
+ * "unavailable" is a failed read, never a user decision: the service worker
+ * restarting, or a content script orphaned by an extension reload. It is acted
+ * on like "suppressed" — a read that failed must not re-ask someone who
+ * answered Never — but it is reported as itself, because a silent "suppressed"
+ * is indistinguishable from a content script that was never injected at all.
+ */
+export type ActivationRead = ActivationState | "unavailable";
+
+export async function getActivationState(domain: SupportedDomain): Promise<ActivationRead> {
   const response = await send({ type: "GET_ACTIVATION", payload: { domain } });
-  return response.ok ? response.state : "suppressed";
+  if (!response.ok) {
+    console.log(`[jobsearch-copilot] activation unavailable on ${domain} (${response.reason})`);
+    return "unavailable";
+  }
+  return response.state;
 }
 
 /** Asks once; resolves true only when the user opts in. */

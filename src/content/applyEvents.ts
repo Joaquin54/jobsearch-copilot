@@ -29,6 +29,12 @@ export type ApplyHandlers = {
   onApply: () => void;
   /** The site's own "did you finish applying?" question, answered in the page. */
   onAnswer?: (answer: "yes" | "no") => void;
+  /**
+   * An apply-looking click that was thrown away. Deduped with the console line,
+   * so it fires at most once per job and reason — the moment the user needs to
+   * hear that nothing was recorded, since they are not watching DevTools.
+   */
+  onIgnored?: (reason: RejectReason) => void;
 };
 
 export function watchApplyClicks(
@@ -45,6 +51,7 @@ export function watchApplyClicks(
     if (logged.has(key)) return;
     logged.add(key);
     console.log(`[jobsearch-copilot] apply click ignored (${reason}): ${describe(candidate)}`);
+    handlers.onIgnored?.(reason);
   };
 
   const handler = (event: PointerEvent): void => {

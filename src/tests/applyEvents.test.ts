@@ -65,12 +65,16 @@ test("a click on Easy Apply is recorded once, a result card is not", async (): P
 test("an apply-looking click with no detail pane says so once", (): void => {
   document.body.innerHTML = '<button aria-label="Easy Apply to this job">Easy Apply</button>';
   let applies = 0;
+  const reasons: string[] = [];
   const stop = watchApplyClicks(linkedinAdapter, (): string | null => null, {
     onApply: (): void => {
       applies += 1;
     },
     onAnswer: (answer: "yes" | "no"): void => {
       answers.push(answer);
+    },
+    onIgnored: (reason: string): void => {
+      reasons.push(reason);
     },
   });
 
@@ -82,6 +86,28 @@ test("an apply-looking click with no detail pane says so once", (): void => {
   const ignored = lines.filter((line: string): boolean => line.includes("apply click ignored"));
   expect(ignored).toHaveLength(1);
   expect(ignored[0]).toContain("no-detail-root");
+  // Told on the page too, and deduped with the console line.
+  expect(reasons).toEqual(["no-detail-root"]);
+  stop();
+});
+
+test("a recorded apply is never reported as ignored", async (): Promise<void> => {
+  await render("linkedin-sdui-search");
+  let applies = 0;
+  const reasons: string[] = [];
+  const stop = watchApplyClicks(linkedinAdapter, (): string | null => "4012345678", {
+    onApply: (): void => {
+      applies += 1;
+    },
+    onIgnored: (reason: string): void => {
+      reasons.push(reason);
+    },
+  });
+
+  click(document.querySelector('[aria-label="Easy Apply to this job"] span') as Element);
+
+  expect(applies).toBe(1);
+  expect(reasons).toEqual([]);
   stop();
 });
 

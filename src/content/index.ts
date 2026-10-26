@@ -1,3 +1,4 @@
+import { BUILD_ID } from "../lib/build.ts";
 import { nowIso, send, type Message } from "../lib/messages.ts";
 import { askToActivate, getActivationState } from "./activation.ts";
 import { watchApplyClicks, watchSuccessModal } from "./applyEvents.ts";
@@ -91,6 +92,10 @@ async function confirmPending(state: Watch): Promise<void> {
   // An unanswered or superseded question keeps the row pending so the next
   // navigation can ask again, rather than orphaning it.
   if (answer === "") return;
+  // The card stays open until it is answered, so the row asked about may have
+  // been promoted or replaced in the meantime; an answer only ever resolves the
+  // row it was asked about.
+  if (state.pendingId !== id) return;
 
   state.pendingId = null;
   state.pendingJobId = null;
@@ -144,6 +149,9 @@ function startWatching(adapter: SiteAdapter, jobId: string): void {
       }
       void promoteNow(adapter, state);
     },
+    onIgnored: (reason: string): void => {
+      ui.toast(`Not tracked (${reason})`, 6000);
+    },
   });
 
   watchSuccessModal(
@@ -185,6 +193,9 @@ function waitForJobId(adapter: SiteAdapter): Promise<string> {
   const immediate = adapter.jobId(new URL(location.href), document);
   if (immediate !== null) return Promise.resolve(immediate);
 
+  // Logged so that "waiting for a job to open" is distinguishable from a
+  // content script that never ran: the symptoms on the page are identical.
+  console.log(`[jobsearch-copilot] waiting for a job page on ${location.hostname}`);
   return new Promise<string>((resolve: (jobId: string) => void): void => {
     const interval = setInterval((): void => {
       const jobId = adapter.jobId(new URL(location.href), document);
@@ -197,6 +208,11 @@ function waitForJobId(adapter: SiteAdapter): Promise<string> {
 }
 
 async function main(): Promise<void> {
+  // First line on every matched page, before anything can return early: without
+  // it, a never-injected script, a stale injected build and a script politely
+  // waiting for a job to open all read the same from the page — silence.
+  console.log(`[jobsearch-copilot] build ${BUILD_ID} on ${location.hostname}`);
+
   const adapter = resolveAdapter(new URL(location.href));
   if (!adapter) {
     console.log(`[jobsearch-copilot] no adapter for ${location.hostname}`);
@@ -207,6 +223,8 @@ async function main(): Promise<void> {
   const jobId = await waitForJobId(adapter);
 
   const state = await getActivationState(adapter.domain);
+  // The reason is logged where the read failed; nothing more can be decided here.
+  if (state === "unavailable") return;
   if (state === "suppressed") {
     console.log(`[jobsearch-copilot] suppressed on ${adapter.domain}`);
     return;
