@@ -40,6 +40,7 @@
   --modality-border: #c4c7c5;
   --dot-linkedin: #0b57d0;
   --dot-indeed: #6750a4;
+  --dot-handshake: #00696d;
 }
 
 @media (prefers-color-scheme: dark) {
@@ -82,6 +83,7 @@
     --modality-border: #5f6368;
     --dot-linkedin: #a8c7fa;
     --dot-indeed: #d0bcff;
+    --dot-handshake: #4fd8e0;
   }
 }
 

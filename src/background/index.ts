@@ -29,7 +29,11 @@ import {
 } from "../lib/settings.ts";
 import { createBlobUrl, revokeBlobUrl } from "./offscreenClient.ts";
 
-const WATCHED_URLS = ["https://*.linkedin.com/*", "https://*.indeed.com/*"];
+const WATCHED_URLS = [
+  "https://*.linkedin.com/*",
+  "https://*.indeed.com/*",
+  "https://*.joinhandshake.com/*",
+];
 
 chrome.runtime.onInstalled.addListener((): void => {
   console.log("[jobsearch-copilot] installed");

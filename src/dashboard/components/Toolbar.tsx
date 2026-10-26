@@ -18,6 +18,7 @@ const STATUS_CHOICES: readonly { value: StatusChoice; label: string }[] = [
 const SOURCE_CHOICES: readonly { value: SourceChoice; label: string }[] = [
   { value: "linkedin", label: "LinkedIn" },
   { value: "indeed", label: "Indeed" },
+  { value: "handshake", label: "Handshake" },
 ];
 
 export type ToolbarProps = {

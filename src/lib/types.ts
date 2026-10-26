@@ -1,5 +1,5 @@
-export type JobSource = "linkedin" | "indeed";
-export type SupportedDomain = "linkedin.com" | "indeed.com";
+export type JobSource = "linkedin" | "indeed" | "handshake";
+export type SupportedDomain = "linkedin.com" | "indeed.com" | "joinhandshake.com";
 export type JobType = "Contract" | "Full-Time" | "Part-Time" | "Internship" | "Co-op";
 export type Modality = "Remote" | "Hybrid" | "On-site";
 export type ApplicationStatus = "pending" | "applied";

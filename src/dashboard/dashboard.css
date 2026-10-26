@@ -596,6 +596,10 @@ td .cell-sub:first-child {
   background: var(--dot-indeed);
 }
 
+.source-dot.is-handshake {
+  background: var(--dot-handshake);
+}
+
 .skills {
   display: flex;
   flex-wrap: wrap;

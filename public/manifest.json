@@ -15,7 +15,8 @@
     {
       "matches": [
         "https://*.linkedin.com/*",
-        "https://*.indeed.com/*"
+        "https://*.indeed.com/*",
+        "https://*.joinhandshake.com/*"
       ],
       "js": [
         "content.js"
@@ -30,6 +31,7 @@
   ],
   "host_permissions": [
     "https://*.linkedin.com/*",
-    "https://*.indeed.com/*"
+    "https://*.indeed.com/*",
+    "https://*.joinhandshake.com/*"
   ]
 }

@@ -9,6 +9,7 @@ import { OpenInNewIcon } from "./icons.tsx";
 const SOURCE_LABEL: Record<JobApplication["source"], string> = {
   linkedin: "LinkedIn",
   indeed: "Indeed",
+  handshake: "Handshake",
 };
 
 const STATUS_LABEL: Record<JobApplication["status"], string> = {

@@ -2,6 +2,7 @@ import { afterEach, beforeEach, expect, test } from "bun:test";
 
 import { watchApplyClicks } from "../content/applyEvents.ts";
 import { waitForSettle } from "../content/navigation.ts";
+import { handshakeAdapter } from "../content/sites/handshake.ts";
 import { indeedAdapter } from "../content/sites/indeed.ts";
 import { linkedinAdapter } from "../content/sites/linkedin.ts";
 
@@ -182,4 +183,63 @@ test("indeed keeps the mutation-quiet path when the page has no result cards", a
 
   document.body.innerHTML = "<main>no pane</main>";
   expect(await waitForSettle(indeedAdapter, "abc", 400)).toBe(false);
+});
+
+test("a click on Handshake's Quick apply is recorded once, a result card is not", async (): Promise<void> => {
+  await render("handshake-search");
+  let applies = 0;
+  const stop = watchApplyClicks(handshakeAdapter, (): string | null => "11730261", {
+    onApply: (): void => {
+      applies += 1;
+    },
+    onAnswer: (answer: "yes" | "no"): void => {
+      answers.push(answer);
+    },
+  });
+
+  click(document.querySelector('[aria-label="Quick apply"] span') as Element);
+  expect(applies).toBe(1);
+
+  // The result list sits outside the pane, which is why it must never be the root.
+  click(document.querySelector('[data-hook^="favorite-action"]') as Element);
+  click(document.querySelector('[data-hook^="job-result-card"] a') as Element);
+  expect(applies).toBe(1);
+
+  // Save and the More-actions menu are inside the pane and still not applies.
+  click(document.querySelector('[aria-label="More actions for this job"]') as Element);
+  expect(applies).toBe(1);
+  stop();
+});
+
+test("the banner's Yes answers before it is judged as an apply click", async (): Promise<void> => {
+  await render("handshake-banner");
+  let applies = 0;
+  const stop = watchApplyClicks(handshakeAdapter, (): string | null => "11730263", {
+    onApply: (): void => {
+      applies += 1;
+    },
+    onAnswer: (answer: "yes" | "no"): void => {
+      answers.push(answer);
+    },
+  });
+
+  click(document.querySelector('[aria-label="Confirm external apply (yes)"] span') as Element);
+  click(document.querySelector('[aria-label="Withdraw external apply (no)"] span') as Element);
+
+  expect(answers).toEqual(["yes", "no"]);
+  expect(applies).toBe(0);
+  // "Apply"-adjacent labels, so without the answer-first ordering these would
+  // be logged as rejected apply clicks.
+  expect(lines.filter((line: string): boolean => line.includes("apply click ignored"))).toEqual([]);
+  stop();
+});
+
+test("handshake follows the h1 anchor when it switches mid-wait", async (): Promise<void> => {
+  await render("handshake-search");
+  expect(await waitForSettle(handshakeAdapter, "11730261", 50)).toBe(true);
+  expect(await waitForSettle(handshakeAdapter, "11739999", 50)).toBe(false);
+
+  const anchor = document.querySelector('a[href="/jobs/11730261"]') as Element;
+  setTimeout((): void => anchor.setAttribute("href", "/jobs/11739999"), 20);
+  expect(await waitForSettle(handshakeAdapter, "11739999", 400)).toBe(true);
 });

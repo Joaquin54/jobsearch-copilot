@@ -8,6 +8,7 @@ const CTA_KEY = "activation";
 const DOMAIN_LABEL: Record<SupportedDomain, string> = {
   "linkedin.com": "LinkedIn",
   "indeed.com": "Indeed",
+  "joinhandshake.com": "Handshake",
 };
 
 export async function getActivationState(domain: SupportedDomain): Promise<ActivationState> {

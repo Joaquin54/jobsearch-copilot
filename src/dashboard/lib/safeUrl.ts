@@ -4,7 +4,7 @@
  * against the full label boundary: a plain substring test would accept
  * evil-linkedin.com and linkedin.com.evil.net.
  */
-const ALLOWED_HOSTS = ["linkedin.com", "indeed.com"] as const;
+const ALLOWED_HOSTS = ["linkedin.com", "indeed.com", "joinhandshake.com"] as const;
 
 export function isDisplayableJobUrl(raw: string): boolean {
   let parsed: URL;

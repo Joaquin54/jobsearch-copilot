@@ -63,7 +63,7 @@ export async function seedApplications(count: number, months: number): Promise<n
   const records: JobApplication[] = [];
 
   for (let i = 0; i < count; i += 1) {
-    const source: JobSource = random() < 0.5 ? "linkedin" : "indeed";
+    const source: JobSource = pick(["linkedin", "indeed", "handshake"] as const, random());
     const company = pick(COMPANIES, random());
     // Spread back over `months` whole months, at a local hour inside the day.
     const dayOffset = Math.floor(random() * months * 30);

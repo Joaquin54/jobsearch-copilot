@@ -13,7 +13,7 @@ export type TableUrlState = {
 const MAX_COMPANY_KEY = 120;
 
 const STATUSES: readonly string[] = ["applied", "pending"];
-const SOURCES: readonly string[] = ["linkedin", "indeed"];
+const SOURCES: readonly string[] = ["linkedin", "indeed", "handshake"];
 
 export function defaultTableUrlState(): TableUrlState {
   return {

@@ -22,6 +22,14 @@ test("every field round trips", (): void => {
   expect(parseTableUrlState(`?${serializeTableUrlState(state)}`)).toEqual(state);
 });
 
+test("a handshake source filter round trips", (): void => {
+  const state: TableUrlState = {
+    ...defaultTableUrlState(),
+    filters: { status: "all", source: "handshake", companyKey: null },
+  };
+  expect(parseTableUrlState(`?${serializeTableUrlState(state)}`)).toEqual(state);
+});
+
 test("the url page number is one based", (): void => {
   expect(serializeTableUrlState({ ...defaultTableUrlState(), pageIndex: 2 })).toContain("page=3");
   expect(parseTableUrlState("?page=3").pageIndex).toBe(2);

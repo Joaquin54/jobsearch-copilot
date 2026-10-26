@@ -51,6 +51,10 @@ test("adapters resolve by hostname", (): void => {
     "linkedin",
   );
   expect(resolveAdapter(new URL("https://ca.indeed.com/viewjob?jk=abc123"))?.source).toBe("indeed");
+  // Handshake hosts are per school, so the suffix is what resolves.
+  expect(resolveAdapter(new URL("https://fiu.joinhandshake.com/job-search/11730261"))?.source).toBe(
+    "handshake",
+  );
   expect(resolveAdapter(new URL("https://boards.greenhouse.io/acme/jobs/1"))).toBeNull();
 });
 

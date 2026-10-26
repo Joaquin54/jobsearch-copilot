@@ -7,6 +7,7 @@ test("accepts https job board hosts and their subdomains", (): void => {
   expect(isDisplayableJobUrl("https://linkedin.com/jobs/1")).toBe(true);
   expect(isDisplayableJobUrl("https://ca.indeed.com/viewjob?jk=abc")).toBe(true);
   expect(isDisplayableJobUrl("https://indeed.com/x")).toBe(true);
+  expect(isDisplayableJobUrl("https://fiu.joinhandshake.com/jobs/11730261")).toBe(true);
 });
 
 test("rejects anything that is not https", (): void => {
@@ -22,6 +23,7 @@ test("rejects lookalike hosts", (): void => {
   expect(isDisplayableJobUrl("https://linkedin.com.evil.net/jobs/1")).toBe(false);
   expect(isDisplayableJobUrl("https://notindeed.com/x")).toBe(false);
   expect(isDisplayableJobUrl("https://indeed.com.attacker.io/x")).toBe(false);
+  expect(isDisplayableJobUrl("https://joinhandshake.com.attacker.io/x")).toBe(false);
   expect(isDisplayableJobUrl("https://fakelinkedin.com/x")).toBe(false);
 });
 

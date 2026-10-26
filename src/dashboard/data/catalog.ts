@@ -38,7 +38,7 @@ function sourceOf(id: string): JobSource | null {
   const cut = id.indexOf(":");
   if (cut < 0) return null;
   const prefix = id.slice(0, cut);
-  return prefix === "linkedin" || prefix === "indeed" ? prefix : null;
+  return prefix === "linkedin" || prefix === "indeed" || prefix === "handshake" ? prefix : null;
 }
 
 /** One key-only pass over the store, sorted into dateApplied-descending order. */
