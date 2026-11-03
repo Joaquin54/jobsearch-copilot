@@ -3,10 +3,6 @@
 A Chrome extension that tracks the jobs you apply to across LinkedIn, Indeed and Handshake, built
 because I needed it for my own job search.
 
-![Popup](docs/images/popup.png)
-
-![Dashboard](docs/images/dashboard.png)
-
 **Stack:** React 19, TypeScript 5.9 (`strict`), Chrome MV3, IndexedDB, Vite 8, Bun.
 
 ## Engineering highlights
