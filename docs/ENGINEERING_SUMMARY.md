@@ -71,7 +71,6 @@ One small test checks that every board is listed in the manifest. Chrome injects
 
 ## Issues I encountered along the way
 
-- **Chrome was running an old build.** Indeed and Handshake looked broken. I ran the adapters against the live pages and they worked, so I checked the built bundle next. It was fine too. Chrome was still running a copy from before my changes, because it keeps the loaded copy until you reload the extension. That cost me three debugging rounds. Now every build writes an id, the content script logs it, the dashboard shows it, and in development the background reloads itself if it starts and finds a newer id on disk.
+- **Chrome was running an old build.** Indeed and Handshake looked broken. I ran the adapters against the live pages and they worked, so I checked the built bundle next. It was fine too. Chrome was still running a copy from before my changes, because it keeps the loaded copy until you reload the extension. That cost me some long debugging rounds. Now every build writes an id, the content script logs it, the dashboard shows it, and in development the background reloads itself if it starts and finds a newer id on disk.
 - **The URL was not the job.** On Indeed's home feed, the job id in the URL can name a different job than the one shown on the first load. I now take the id from the selected result card and only fall back to the URL.
-- **A modal is not a submission.** Handshake's apply modal is in the page before anything is submitted. Treating it as success would mark jobs I never finished, so I don't use it.
-- **My own write-up overclaimed.** When I checked my longer engineering notes line by line against the code, about 10 claims were wrong. That check also found four message types that nothing sends anymore.
+- **A modal is not a submission.** Handshake's apply modal is in the page before anything is submitted. Treating it as success would mark applications I never finished, so it is not considred.
