@@ -18,8 +18,6 @@ I checked how each site's pages are built against real job pages before writing 
 
 ## How it is built
 
-&#91;embedded content: How the parts talk to each other\]
-
 The content script runs inside the job page. The service worker is the only part that writes to the database in a normal build. The popup and dashboard ask it for counts and settings. The dashboard also reads the database directly, which keeps its table fast.
 
 - **Typed messages.** Every message is one case of a TypeScript union, and the worker handles them in one `switch` that ends in `assertNever`. A new message type fails to compile until it is handled. Each caller also gets the exact response type for the message it sent.
