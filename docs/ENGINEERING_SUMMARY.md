@@ -16,7 +16,7 @@ The content script runs inside the job page. The service worker is the only part
 What happens when I click Apply
 1. The content script listens for pointerdown in the capture phase instead of click. Indeed can navigate away right after the click, and this runs first.
 2. It only counts clicks inside the open job pane. LinkedIn's "Easy Apply" filter and the buttons on result cards look the same, so they would cause false records.
-3. It checks that the pane really shows the job in the URL. If it still shows the old job, the capture is refused as stale.
+3. It checks that the pane really shows the job it thinks is selected. If it still shows the old job, the capture is refused as stale.
 4. It saves the job as pending. The id is the board plus the board's own job id, so applying twice updates the same row instead of making a new one.
 5. The row becomes applied when one of these happens:
     ◦ LinkedIn shows its confirmation dialog
@@ -28,7 +28,7 @@ Data and the React side
 Everything lives in one IndexedDB store with four indexes. The useful one is a compound index on status and date. One key range gives me "applied jobs in this date window" without reading any other rows.
 The dashboard builds its list from index keys only. It filters and pages that list in memory, then loads full records only for the rows on screen. I chose this because reading every full record on each page change would not stay smooth at 5,000 rows.
 A few React choices I would make again:
-• Popup. The data request starts before React mounts, so the round trip overlaps the first render. There is one request and one state update. The loading skeleton comes from the same function that shapes the real data, so nothing jumps when it arrives.
+• Popup. The data request starts before React mounts, so the round trip overlaps the first render. Both reads go out together, and there is one state update. The loading skeleton comes from the same function that shapes the real data, so nothing jumps when it arrives.
 • Dashboard table. Filters live in the URL, so a link restores the view. Filter and page changes run inside startTransition, so the old page stays visible while the next one loads. A request id and an "alive" flag drop any answer that arrives after a newer request or after the page closes.
 • Where state lives. The table owns its own state, so paging never re-renders the overview above it.
 Safety and privacy
@@ -40,7 +40,7 @@ I treat everything read from a job page as untrusted, because someone else contr
 • The in-page card is drawn inside a shadow root, so the site's CSS can't break it.
 Testing
 There are 28 test files, run with bun test. Bun has no DOM or IndexedDB, so a setup file loads happy-dom and fake-indexeddb.
-The tests that matter most use small HTML fixtures I wrote from the verified page maps: three for LinkedIn, four for Indeed and three for Handshake. Each adapter suite starts by checking that decoys are really in its fixtures, like Save buttons, filter pills and result cards. Then it checks that the adapter finds the real Apply button and ignores the decoys, reads the exact field values, and refuses a pane that still shows the old job. When a board changes its layout, a fixture test should fail before I notice bad records.
+The tests that matter most use small HTML fixtures I wrote from the verified page maps: three for LinkedIn, four for Indeed and three for Handshake. The adapter suites start by checking that the decoys are really there, like Save buttons, filter pills and result cards. Then it checks that the adapter finds the real Apply button and ignores the decoys, reads the exact field values, and refuses a pane that still shows the old job. When a board changes its layout, a fixture test should fail before I notice bad records.
 One small test checks that every board is listed in the manifest. Chrome injects the content script nowhere if a board is missing, and no adapter test can catch that.
 What I got wrong along the way
 • Chrome was running an old build. Indeed and Handshake looked broken. I ran the adapters against the live pages and they worked, so I checked the built bundle next. It was fine too. Chrome was still running a copy from before my changes, because it keeps the loaded copy until you reload the extension. That cost me three debugging rounds. Now every build writes an id, the content script logs it, the dashboard shows it, and in development the background reloads itself if it starts and finds a newer id on disk.
