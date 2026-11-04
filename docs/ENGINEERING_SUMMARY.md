@@ -11,7 +11,7 @@ I checked how each site's pages are built against real job pages before writing 
 How it is built
 The content script runs inside the job page. The service worker is the only part that writes to the database in a normal build. The popup and dashboard ask it for counts and settings. The dashboard also reads the database directly, which keeps its table fast.
 • Typed messages. Every message is one case of a TypeScript union, and the worker handles them in one switch that ends in assertNever. A new message type fails to compile until it is handled. Each caller also gets the exact response type for the message it sent.
-• One adapter per board. Each board has its own adapter behind a shared interface. Everything board-specific lives there, so a LinkedIn redesign can't break Indeed.
+• One adapter per board. Each board has its own adapter behind a shared interface. Each board's page-reading logic lives there, so a LinkedIn redesign can't break Indeed.
 • Two builds. The popup, dashboard and worker build as ES modules. The content script builds separately as one classic script, because Chrome doesn't load content scripts declared in the manifest as modules.
 What happens when I click Apply
 1. The content script listens for pointerdown in the capture phase instead of click. Indeed can navigate away right after the click, and this runs first.
@@ -47,17 +47,3 @@ What I got wrong along the way
 • The URL was not the job. On Indeed's home feed, the job id in the URL can name a different job than the one shown on the first load. I now take the id from the selected result card and only fall back to the URL.
 • A modal is not a submission. Handshake's apply modal is in the page before anything is submitted. Treating it as success would mark jobs I never finished, so I don't use it.
 • My own write-up overclaimed. When I checked my longer engineering notes line by line against the code, about 10 claims were wrong. That check also found four message types that nothing sends anymore.
-Known gaps and what I would do next
-Gap
-What I would do
-If I close the tab before confirming, the row stays pending, and nothing in the popup or dashboard can fix it.
-Show pending rows in the dashboard with a "Did you submit this?" action.
-The list of boards is repeated in about a dozen places. Adding a fourth board means finding all of them.
-Export one list and have the manifest test check against it.
-There is no linter. TypeScript is the only automatic check.
-Add a linter and run it in the build.
-Four message types are never sent, and some code comments are out of date.
-Remove the dead messages and fix the comments.
-LinkedIn's "Application sent" confirmation hasn't been checked with a real submission yet.
-Verify it on a real Easy Apply.
-After that, I would add a fourth board, probably Greenhouse. The point is to find out which parts of my adapter interface are really shaped around LinkedIn.
