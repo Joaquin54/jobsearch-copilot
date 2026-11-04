@@ -69,7 +69,7 @@ The tests that matter most use small HTML fixtures I wrote from the verified pag
 
 One small test checks that every board is listed in the manifest. Chrome injects the content script nowhere if a board is missing, and no adapter test can catch that.
 
-## What I got wrong along the way
+## Issues I encountered along the way
 
 - **Chrome was running an old build.** Indeed and Handshake looked broken. I ran the adapters against the live pages and they worked, so I checked the built bundle next. It was fine too. Chrome was still running a copy from before my changes, because it keeps the loaded copy until you reload the extension. That cost me three debugging rounds. Now every build writes an id, the content script logs it, the dashboard shows it, and in development the background reloads itself if it starts and finds a newer id on disk.
 - **The URL was not the job.** On Indeed's home feed, the job id in the URL can name a different job than the one shown on the first load. I now take the id from the selected result card and only fall back to the URL.
