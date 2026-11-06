@@ -104,3 +104,7 @@ reads only the page you already opened: it issues no requests of its own, automa
 applying, and stores data locally. That is materially different from a scraper, but it is not
 unambiguously permitted. Publishing this project openly does not shield you from that exposure — use
 it knowing the risk is yours.
+
+
+## To be Implemented
+- Keyword comparison of applied jobs to current CV to help applicants better tailor their CV for the positions they are applying.
